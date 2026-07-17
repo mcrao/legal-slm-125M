@@ -12,8 +12,12 @@ text → a fine-tuned model that answers questions about it.**
 
 - 🤗 **Base model:** https://huggingface.co/jonam-ai/slm-125m-base
 - 🤗 **Fine-tuned (instruct) model:** https://huggingface.co/jonam-ai/legal-slm-125m-sft
+- 🤗 **RAFT (retrieval-augmented) model:** https://huggingface.co/jonam-ai/legal-slm-125m-raft
 - 🌐 **Live demo:** https://legal-slm-125.vercel.app
-- 📊 **Held-out perplexity:** **9.13** (base) · **SFT val loss 2.06**
+- 📊 **Held-out perplexity:** **9.13** (base) · **SFT val loss 2.06** · **RAFT val loss 0.54**
+
+The full arc: **random weights → a base model that writes → a fine-tuned model that
+answers → a RAFT model that answers from context you give it and ignores distractors.**
 
 | | |
 |---|---|
@@ -42,9 +46,10 @@ text → a fine-tuned model that answers questions about it.**
 7. [Design decisions (and why)](#design-decisions-and-why)
 8. [Results](#results)
 9. [Fine-tuning: from base model to Q&A assistant](#fine-tuning-from-base-model-to-qa-assistant)
-10. [Cost, honestly](#cost-honestly)
-11. [Gotchas we already paid for](#gotchas-we-already-paid-for)
-12. [Credits & license](#credits--license)
+10. [RAFT: grounding the model in retrieved context](#raft-grounding-the-model-in-retrieved-context)
+11. [Cost, honestly](#cost-honestly)
+12. [Gotchas we already paid for](#gotchas-we-already-paid-for)
+13. [Credits & license](#credits--license)
 
 ---
 
@@ -63,6 +68,7 @@ Phase 5  pretrain          →  8×H100 DDP, 2 epochs                   → /dat
 Phase 6  evaluate + push   →  full-val perplexity + upload to HF
 Phase 7  serve             →  Modal inference endpoint + Vercel site
 Phase 8  fine-tune (SFT)   →  Gemini Q&A dataset → 1×L4 fine-tune     → /data/sft
+Phase 9  RAFT              →  OpenRouter context dataset → 1×L4 tune  → /data/raft
 ```
 
 All durable artifacts live on one Modal Volume (`slm-125m`) mounted at `/data`,
@@ -82,6 +88,10 @@ so any phase can be re-run or resumed independently.
 | `web/` | Next.js 16 front end on Vercel — the live playground **and chat** |
 | `finetune.py` | Phase 8 dataset pipeline: Gemini Q&A synthesis, LLM-judge, dedup, tokenize |
 | `train_sft.py` | Phase 8 supervised fine-tuning loop (single GPU, full FT, loss-masked) |
+| `raft.py` | Phase 9 RAFT dataset pipeline: OpenRouter teacher, judge, oracle+distractor assembly |
+| `train_raft.py` | Phase 9 RAFT fine-tuning loop (continues from the SFT model) |
+| `inference_raft.py` | Modal endpoint that answers from user-provided context (RAFT backend) |
+| `raft_eval.py` | Evaluates the base → SFT → RAFT arc (perplexity + answer-match accuracy) |
 
 ## Prerequisites
 
@@ -498,6 +508,56 @@ out = model.generate(torch.tensor([ids]), max_new_tokens=120, do_sample=True,
 print(tok.decode(out[0][len(ids):], skip_special_tokens=True))
 ```
 
+## RAFT: grounding the model in retrieved context
+
+The SFT model answers from memory, but a 125M model's memory is tiny and it fabricates.
+**RAFT** ([Retrieval-Augmented Fine-Tuning](https://arxiv.org/abs/2403.10131)) teaches it
+to answer from *context you provide*, and to ignore irrelevant distractor documents.
+
+- 🤗 **RAFT model:** https://huggingface.co/jonam-ai/legal-slm-125m-raft
+
+### The idea
+Each RAFT example is `question + [oracle doc + distractor docs] → grounded answer`. Two
+tricks: mix the oracle with distractors so the model learns to find the signal, and for a
+fraction of examples remove the oracle so it does not blindly trust retrieval. The answer
+quotes the source span (`##begin_quote## … ##end_quote##`), then states the final answer.
+Adapted for a **1,024-token** model: short ~200-token chunks, 2 distractors, 81%
+oracle-present / 19% distractor-only.
+
+### The dataset (`raft.py`)
+Same teacher-distillation shape as SFT, but with **OpenRouter `minimax/minimax-m3`** as
+teacher + judge (a rate-limit story of its own — see gotchas):
+```bash
+modal run raft.py::build        # generate + LLM-judge (OpenRouter minimax-m3)
+modal run raft.py::curate_run   # dedup + assemble oracle+distractors + tokenize
+```
+4,069 examples (3,866 train / 203 val); teacher + judge cost ~$7.
+
+### The fine-tune (`train_raft.py`)
+Continues from the SFT model, 1×L4, 2 epochs, loss on the answer only. Val loss
+**2.13 → 0.54** (grounded answering is easier than closed-book QA — the answer is in the
+context). `modal run train_raft.py::run`
+
+### Does it help? The base → SFT → RAFT arc
+Measured with `raft_eval.py` on the **same** held-out RAFT validation set (context +
+distractors → answer), for all three models:
+
+| Model | Perplexity ↓ | Answer-match accuracy ↑ |
+|---|---|---|
+| base (mentor, 10-epoch) | 15.85 | 0.5% |
+| SFT | 8.31 | 7.4% |
+| **RAFT** | **1.74** | **17.2%** |
+
+Perplexity on the grounded answer drops **9×** across the arc; answer-match accuracy
+(strict exact-answer containment on greedy generations) climbs **35×**. The absolute 17.2%
+is modest — a 125M model under a harsh exact-match metric — but the monotonic jump is the
+point: **each stage makes the model measurably better at grounded answering.**
+
+### Serving (`inference_raft.py`)
+A scale-to-zero Modal endpoint takes `{context, question}` and streams the grounded answer.
+It powers the **RAFT** section of the live demo: paste context (with noise), ask, and watch
+it quote the relevant span and ignore the distractors.
+
 ## Cost, honestly
 
 This project is *not* free — the GPU pretraining is the real expense, and being
@@ -511,7 +571,9 @@ honest about it helps you budget:
 | Deployed inference (Modal) | ~$0.06 | Phase 7 endpoint (scale-to-zero) |
 | Gemini API | ~$2.0 | Phase 8: Q&A synthesis (~$0.45) + LLM-judge (~$1.54) |
 | L4 (Modal) | ~$0.05 | Phase 8: 2-epoch fine-tune |
-| **Total usage** | **~$41** | Modal (~$39) + Gemini (~$2) |
+| OpenRouter (minimax-m3) | ~$7.2 | Phase 9: RAFT dataset synthesis + judge |
+| L4 (Modal) | ~$0.3 | Phase 9: RAFT fine-tune + arc eval |
+| **Total usage** | **~$48** | Modal (~$39) + Gemini (~$2) + OpenRouter (~$7) |
 
 Modal's free tier (~$30/month credits) absorbs most of the Modal spend; out-of-pocket
 for the Modal side was ~$9, and the fine-tuning stage (Phases 8) added only ~$2 of
@@ -538,6 +600,13 @@ fewer epochs or a single-H100 run cost proportionally less. Everything except Ph
    route type hints into strings FastAPI can't resolve for locally-imported classes.
 8. **Keep heavy steps fanned out one-worker-per-shard.** Modal can preempt a long
    single container; sharded work is preemption-safe.
+9. **Respect the LLM API's *token*-per-minute limit, not just requests.** The RAFT
+   build hammered a 200k-TPM OpenAI key with 192-way concurrency → a storm of 429s
+   and a timeout. The fix was not "more retries" but *less concurrency* on a
+   higher-throughput model (OpenRouter minimax-m3). Fighting a rate limit is a waste;
+   change the limit.
+10. **`minimax-m3` emits literal newlines inside its JSON strings.** Parse teacher
+    output with `json.loads(text, strict=False)` or you will silently drop good rows.
 
 ## Credits & license
 
