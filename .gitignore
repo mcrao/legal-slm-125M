@@ -18,6 +18,7 @@ hf_export/
 sft_export/
 onnx_sft/
 onnx_upload_sft/
+raft_export/
 *.safetensors
 *.onnx
 *.bin

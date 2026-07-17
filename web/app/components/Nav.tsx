@@ -7,6 +7,7 @@ import { HF_URL } from "@/app/lib/model";
 const LINKS = [
   { id: "play", label: "Playground", small: false },
   { id: "chat", label: "Chat", small: false },
+  { id: "raft", label: "RAFT", small: false },
   { id: "arch", label: "Architecture", small: true },
 ];
 

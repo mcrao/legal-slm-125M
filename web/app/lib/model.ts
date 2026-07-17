@@ -8,8 +8,41 @@ export const CHAT_URL =
   process.env.NEXT_PUBLIC_CHAT_URL ??
   "https://mcrao--legal-slm-125m-chat-inference-chat-web.modal.run";
 
+export const RAFT_URL =
+  process.env.NEXT_PUBLIC_RAFT_URL ??
+  "https://mcrao--legal-slm-125m-raft-inference-raft-web.modal.run";
+
 export const HF_URL = "https://huggingface.co/jonam-ai/slm-125m-base";
 export const HF_SFT_URL = "https://huggingface.co/jonam-ai/legal-slm-125m-sft";
+export const HF_RAFT_URL = "https://huggingface.co/jonam-ai/legal-slm-125m-raft";
+
+export const RAFT_EXAMPLES = [
+  {
+    label: "Lease rent (with distractor)",
+    context:
+      "[1] The Company entered into a five-year lease for its headquarters commencing January 1, 2020, at an annual rent of $2.4 million.\n[2] The board declared a quarterly dividend of $0.15 per share, payable in March.",
+    question: "What is the annual rent for the Company's headquarters lease?",
+  },
+  {
+    label: "Contract under duress",
+    context:
+      "[1] In Henderson v. State, the court held that a contract signed under duress is voidable at the option of the coerced party.\n[2] The court noted that duress requires a wrongful threat that overcomes the victim's free will.\n[3] Unrelated: filing fees were set at $250.",
+    question: "According to Henderson v. State, is a contract signed under duress void or voidable?",
+  },
+  {
+    label: "Indemnification cap",
+    context:
+      "[1] The purchase agreement was executed on June 3, 2021.\n[2] The indemnification clause caps the seller's aggregate liability at $12.4 million.\n[3] The company's fiscal year ends December 31.",
+    question: "What is the cap on the seller's liability under the indemnification clause?",
+  },
+] as const;
+
+export const RAFT_STATS = [
+  { k: "Base", v: "legal-slm-125m-sft", note: "continued from SFT" },
+  { k: "Method", v: "RAFT", note: "context + distractors" },
+  { k: "Trained on", v: "4,069 examples", note: "OpenRouter-distilled" },
+  { k: "Val loss", v: "0.54", note: "from 2.13" },
+] as const;
 
 export const CHAT_PRESETS = [
   "What must a plaintiff prove in a breach of contract claim?",

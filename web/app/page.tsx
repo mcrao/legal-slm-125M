@@ -1,8 +1,9 @@
 import Chat from "@/app/components/Chat";
 import Nav from "@/app/components/Nav";
 import Playground from "@/app/components/Playground";
+import Raft from "@/app/components/Raft";
 import { DonutMix, TrainingCurve } from "@/app/components/Visuals";
-import { ARCH, HERO_STATS, HF_SFT_URL, HF_URL, NUMBERS, SFT_STATS } from "@/app/lib/model";
+import { ARCH, HERO_STATS, HF_RAFT_URL, HF_SFT_URL, HF_URL, NUMBERS, RAFT_STATS, SFT_STATS } from "@/app/lib/model";
 
 export default function Home() {
   return (
@@ -41,7 +42,29 @@ export default function Home() {
         <Chat />
       </Section>
 
-      <Section n="03" eyebrow="The numbers" title="Small model, honest accounting">
+      <Section n="03" eyebrow="RAFT" title="Now ground it in your context">
+        <p style={lead}>
+          One more layer.{" "}
+          <a href={HF_RAFT_URL} target="_blank" rel="noopener" className="link-underline" style={{ color: "var(--green)" }}>
+            legal-slm-125m-raft ↗
+          </a>{" "}
+          was <em>RAFT-tuned</em> (Retrieval-Augmented Fine-Tuning) to answer from context
+          <em> you</em> provide, quote the exact source, and ignore unrelated distractor text.
+          Paste a passage, add some noise, and ask.
+        </p>
+        <div style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1px", background: "var(--line)", border: "1px solid var(--line)", borderRadius: 5, overflow: "hidden", marginBottom: "1.75rem" }}>
+          {RAFT_STATS.map((s) => (
+            <div key={s.k} style={{ background: "var(--paper-2)", padding: "1rem 1.1rem" }}>
+              <div className="section-num" style={{ marginBottom: "0.35rem" }}>{s.k}</div>
+              <div className="stat-num" style={{ fontSize: "1.15rem", color: "var(--ink)" }}>{s.v}</div>
+              <div className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)", marginTop: "0.2rem" }}>{s.note}</div>
+            </div>
+          ))}
+        </div>
+        <Raft />
+      </Section>
+
+      <Section n="04" eyebrow="The numbers" title="Small model, honest accounting">
         <div style={grid3}>
           {NUMBERS.map((x) => (
             <div key={x.k} style={numCell}>
@@ -53,7 +76,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="04" eyebrow="Training" title="Perplexity, falling">
+      <Section n="05" eyebrow="Training" title="Perplexity, falling">
         <p style={lead}>
           Held-out perplexity measured on a 20.6-million-token validation set the model
           never trained on. Two epochs, 7,778 optimizer steps, from a random start to{" "}
@@ -64,7 +87,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="05" eyebrow="Architecture" title="A Llama, in miniature">
+      <Section n="06" eyebrow="Architecture" title="A Llama, in miniature">
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "2.5rem", alignItems: "start" }}>
           <dl style={{ margin: 0, display: "grid", gap: 0 }}>
             {ARCH.map((a, i) => (
@@ -78,7 +101,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="06" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
+      <Section n="07" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
         <p style={lead}>
           Streamed from public datasets, then run through a deterministic pipeline:
           rule-based cleaning, an OCR-garble gate, MinHash-LSH near-duplicate removal,
@@ -89,7 +112,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="07" eyebrow="Caveats" title="What this is, and is not">
+      <Section n="08" eyebrow="Caveats" title="What this is, and is not">
         <div style={{ display: "grid", gap: "1.1rem", maxWidth: "46rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
@@ -146,7 +169,7 @@ function Hero() {
 }
 
 function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: string; children: React.ReactNode }) {
-  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "Architecture" ? "arch" : undefined;
+  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Architecture" ? "arch" : undefined;
   return (
     <section id={anchor} style={{ borderTop: "1px solid var(--line)" }}>
       <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>
