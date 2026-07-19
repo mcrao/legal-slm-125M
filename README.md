@@ -16,7 +16,7 @@ text → a fine-tuned model that answers questions about it.**
 - 🤗 **RAFT (retrieval-augmented) model:** https://huggingface.co/jonam-ai/legal-slm-125m-raft
 - 🤗 **In-browser ONNX (int8):** https://huggingface.co/jonam-ai/legal-slm-125m-sft-onnx
 - 🌐 **Live demo:** https://legal-slm-125.vercel.app
-- 📊 **Held-out perplexity:** **9.13** (base) · **SFT val loss 2.06** · **RAFT val loss 0.54**
+- 📊 **Held-out perplexity:** **9.13** (base) · **SFT val loss 2.06** · **RAFT val loss ~0.38**
 
 The full arc: **random weights → a base model that writes → a fine-tuned model that
 answers → a RAFT model that answers from context you give it and ignores distractors.**
@@ -572,8 +572,8 @@ modal run raft.py::curate_run   # dedup + assemble oracle+distractors + tokenize
 4,069 examples (3,866 train / 203 val); teacher + judge cost ~$7.
 
 ### The fine-tune (`train_raft.py`)
-Continues from the SFT model, 1×L4, 2 epochs, loss on the answer only. Val loss
-**2.13 → 0.54** (grounded answering is easier than closed-book QA — the answer is in the
+Continues from the SFT model, 1×L4, 2 epochs, loss on the answer only. Val loss falls to
+**~0.38** (grounded answering is easier than closed-book QA — the answer is in the
 context). `modal run train_raft.py::run`
 
 ### Does it help? The base → SFT → RAFT arc
@@ -582,14 +582,15 @@ distractors → answer), for all three models:
 
 | Model | Perplexity ↓ | Answer-match accuracy ↑ |
 |---|---|---|
-| base (mentor, 10-epoch) | 15.85 | 0.5% |
-| SFT | 8.31 | 7.4% |
-| **RAFT** | **1.74** | **17.2%** |
+| base (mentor, 10-epoch) | 13.75 | 1.0% |
+| SFT | 7.24 | 7.9% |
+| **RAFT** | **1.46** | **17.2%** |
 
-Perplexity on the grounded answer drops **9×** across the arc; answer-match accuracy
-(strict exact-answer containment on greedy generations) climbs **35×**. The absolute 17.2%
+Perplexity on the grounded answer drops **9.4×** across the arc; answer-match accuracy
+(strict exact-answer containment on greedy generations) climbs **17×**. The absolute 17.2%
 is modest — a 125M model under a harsh exact-match metric — but the monotonic jump is the
-point: **each stage makes the model measurably better at grounded answering.**
+point: **each stage makes the model measurably better at grounded answering.** (Numbers on
+the current grounded-only RAFT model; see the faithfulness note above.)
 
 ### Serving (`inference_raft.py`)
 A scale-to-zero Modal endpoint takes `{context, question}` and streams the grounded answer.
@@ -645,7 +646,7 @@ modal deploy gemma_inference.py                         # scale-to-zero GPU endp
 | **SFT** | full FT · 125.8M (100%) · 1.06M tok · 2 ep · 1×L4 · **~$0.05** | QLoRA · 20.8M (0.79%) · 1.52M tok · 3 ep · 1×A100 · **~$4** |
 | **RAFT** | full FT · 125.8M (100%) · 5.42M tok · 2 ep · 1×L4 · **~$0.30** | QLoRA · 20.8M (0.79%) · 5.54M tok · 2 ep · 1×A100 · **~$1.5** |
 | Training loss (SFT) | val 4.27 → **2.06** | train → **~0.62** |
-| Training loss (RAFT) | val 2.13 → **0.54** | train → **~0.16** |
+| Training loss (RAFT) | val → **~0.38** | train → **~0.15** |
 | Serves on | CPU (or in-browser) | **GPU** (2.6B needs one) |
 
 (The loss numbers are not directly comparable — different tokenizers, different vocab, full

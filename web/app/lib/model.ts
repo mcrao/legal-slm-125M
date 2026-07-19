@@ -81,7 +81,7 @@ export const RAFT_STATS = [
   { k: "Base", v: "legal-slm-125m-sft", note: "continued from SFT" },
   { k: "Method", v: "RAFT", note: "context + distractors" },
   { k: "Trained on", v: "4,069 examples", note: "OpenRouter-distilled" },
-  { k: "Val loss", v: "0.54", note: "from 2.13" },
+  { k: "Answer-match", v: "17.2%", note: "1.0% → 7.9% → 17.2%" },
 ] as const;
 
 export const CHAT_PRESETS = [
