@@ -2,9 +2,10 @@
 
 Build a 125-million-parameter Llama-style language model **from a random
 initialization** — data pipeline, tokenizer, pretraining, evaluation, a live web
-demo, and finally **supervised fine-tuning into a Q&A assistant** — for legal and
+demo, **supervised fine-tuning into a Q&A assistant**, **RAFT** for grounded answering,
+and a head-to-head **QLoRA fine-tune of Gemma 2 2B** on the same data — for legal and
 financial English. Everything is streamed, cleaned, and trained reproducibly on
-[Modal](https://modal.com); the finished models live on Hugging Face and one is
+[Modal](https://modal.com); the finished models live on Hugging Face and are
 served through a Vercel front end.
 
 The full arc: **random weights → a base model that writes fluent legal/financial
@@ -13,11 +14,20 @@ text → a fine-tuned model that answers questions about it.**
 - 🤗 **Base model:** https://huggingface.co/jonam-ai/slm-125m-base
 - 🤗 **Fine-tuned (instruct) model:** https://huggingface.co/jonam-ai/legal-slm-125m-sft
 - 🤗 **RAFT (retrieval-augmented) model:** https://huggingface.co/jonam-ai/legal-slm-125m-raft
+- 🤗 **In-browser ONNX (int8):** https://huggingface.co/jonam-ai/legal-slm-125m-sft-onnx
 - 🌐 **Live demo:** https://legal-slm-125.vercel.app
 - 📊 **Held-out perplexity:** **9.13** (base) · **SFT val loss 2.06** · **RAFT val loss 0.54**
 
 The full arc: **random weights → a base model that writes → a fine-tuned model that
 answers → a RAFT model that answers from context you give it and ignores distractors.**
+
+**And a real-world baseline.** We then ran the *identical* SFT and RAFT datasets through a
+real pretrained model — **Gemma 2 2B-it** — with **QLoRA** (4-bit base, 0.79% of weights
+trained), so you can compare a from-scratch 125M against a borrowed-and-adapted 2.6B on the
+same data. Both are on the live demo (toggle in the Chat and RAFT panels).
+
+- 🤗 **Gemma 2B legal SFT (QLoRA):** https://huggingface.co/jonam-ai/gemma-2-2b-legal-sft
+- 🤗 **Gemma 2B legal RAFT (QLoRA):** https://huggingface.co/jonam-ai/gemma-2-2b-legal-raft
 
 | | |
 |---|---|
@@ -47,9 +57,10 @@ answers → a RAFT model that answers from context you give it and ignores distr
 8. [Results](#results)
 9. [Fine-tuning: from base model to Q&A assistant](#fine-tuning-from-base-model-to-qa-assistant)
 10. [RAFT: grounding the model in retrieved context](#raft-grounding-the-model-in-retrieved-context)
-11. [Cost, honestly](#cost-honestly)
-12. [Gotchas we already paid for](#gotchas-we-already-paid-for)
-13. [Credits & license](#credits--license)
+11. [Comparison: 125M from scratch vs. Gemma 2 2B (QLoRA)](#comparison-125m-from-scratch-vs-gemma-2-2b-qlora)
+12. [Cost, honestly](#cost-honestly)
+13. [Gotchas we already paid for](#gotchas-we-already-paid-for)
+14. [Credits & license](#credits--license)
 
 ---
 
@@ -69,6 +80,7 @@ Phase 6  evaluate + push   →  full-val perplexity + upload to HF
 Phase 7  serve             →  Modal inference endpoint + Vercel site
 Phase 8  fine-tune (SFT)   →  Gemini Q&A dataset → 1×L4 fine-tune     → /data/sft
 Phase 9  RAFT              →  OpenRouter context dataset → 1×L4 tune  → /data/raft
+Phase 10 Gemma QLoRA       →  same datasets → Gemma 2 2B QLoRA SFT+RAFT → /data/gemma
 ```
 
 All durable artifacts live on one Modal Volume (`slm-125m`) mounted at `/data`,
@@ -92,6 +104,9 @@ so any phase can be re-run or resumed independently.
 | `train_raft.py` | Phase 9 RAFT fine-tuning loop (continues from the SFT model) |
 | `inference_raft.py` | Modal endpoint that answers from user-provided context (RAFT backend) |
 | `raft_eval.py` | Evaluates the base → SFT → RAFT arc (perplexity + answer-match accuracy) |
+| `gemma_finetune.py` | Phase 10: QLoRA SFT + RAFT of Gemma 2 2B on the same datasets, merge, HF push |
+| `gemma_inference.py` | Modal scale-to-zero **GPU** endpoint serving the Gemma SFT + RAFT models |
+| `modelcards/` | Hugging Face model cards for the Gemma and ONNX models |
 
 ## Prerequisites
 
@@ -390,7 +405,7 @@ on a synthetic legal/financial Q&A dataset.
   - **⚡ In-browser** runs the model **entirely on the visitor's device** via
     [transformers.js](https://github.com/huggingface/transformers.js) — an int8 ONNX
     export ([`jonam-ai/legal-slm-125m-sft-onnx`](https://huggingface.co/jonam-ai/legal-slm-125m-sft-onnx),
-    ~140MB, cached after first load; the int8 step costs ~38% on held-out perplexity
+    ~133MB, cached after first load; the int8 step costs ~38% on held-out perplexity
     versus fp32, a deliberate size-for-quality trade). **No backend, $0 forever.** This is the only way
     to serve a custom model with zero server cost — HF's free serverless API doesn't
     host arbitrary models, and HF Docker Spaces now require a paid PRO plan.
@@ -558,6 +573,76 @@ A scale-to-zero Modal endpoint takes `{context, question}` and streams the groun
 It powers the **RAFT** section of the live demo: paste context (with noise), ask, and watch
 it quote the relevant span and ignore the distractors.
 
+## Comparison: 125M from scratch vs. Gemma 2 2B (QLoRA)
+
+Everything above builds a model **from a random init**. The natural question is: how does
+that compare to the standard industry path — take a strong pretrained model and adapt it?
+So Phase 10 runs the **exact same SFT and RAFT datasets** through
+[`google/gemma-2-2b-it`](https://huggingface.co/google/gemma-2-2b-it) using **QLoRA**, and
+puts both models on the live demo behind a toggle.
+
+- 🤗 **Gemma 2B SFT (QLoRA):** https://huggingface.co/jonam-ai/gemma-2-2b-legal-sft
+- 🤗 **Gemma 2B RAFT (QLoRA):** https://huggingface.co/jonam-ai/gemma-2-2b-legal-raft
+
+### Reusing the data (no re-tokenizing by hand)
+The SFT (`chat.jsonl`) and RAFT datasets are reused **as text**. Gemma's own SentencePiece
+tokenizer (256k vocab) re-tokenizes them automatically inside TRL — you do *not* reuse our
+16,384-token IDs, because a model's embeddings are bound to its own tokenizer (the same
+lesson as Phase 8, in reverse). `raft.py::export_text` emits the RAFT examples as
+`{context, question, answer}` text for this.
+
+### QLoRA, not full fine-tune
+At 2.6B params, full fine-tuning is wasteful for this demo. **QLoRA** loads the base in
+**4-bit NF4** (double-quantized) and trains only small **LoRA adapters**:
+
+| | |
+|---|---|
+| Base | google/gemma-2-2b-it — Gemma 2 decoder, 26L · 2,304d · 8 heads / 4 KV (GQA) · 256k vocab · 8,192 ctx |
+| Quantization | 4-bit NF4, double quant, bf16 compute |
+| LoRA | r=16, α=32, dropout 0.05, targets `q/k/v/o/gate/up/down_proj` |
+| Trainable | **20.8M of 2.61B (0.79%)** |
+| Loss | completion-only (Gemma chat template; system merged into the user turn) |
+| Attention | **eager** (required for Gemma 2's logit soft-capping during training) |
+| Merge | adapters merged into a bf16 base and pushed as a standalone model |
+
+```bash
+modal run gemma_finetune.py::run --stage sft --pilot   # cheap L4 sanity first
+modal run gemma_finetune.py::run --stage sft            # QLoRA SFT  (A100, 3 epochs)
+modal run gemma_finetune.py::push --stage sft           # merge → HF
+modal run gemma_finetune.py::run --stage raft           # QLoRA RAFT on top of SFT (2 epochs)
+modal run gemma_finetune.py::push --stage raft
+modal deploy gemma_inference.py                         # scale-to-zero GPU endpoint
+```
+
+### Side by side
+
+| Phase | Our SLM · 125M | Gemma 2 · 2B |
+|---|---|---|
+| **Pretrain / Base** | 125.8M trainable (100%) · 4.08B tok · 8×H100 · **~$36** | Google-pretrained · ~2T tok · **$0 to us** |
+| **SFT** | full FT · 125.8M (100%) · 1.06M tok · 2 ep · 1×L4 · **~$0.05** | QLoRA · 20.8M (0.79%) · 1.52M tok · 3 ep · 1×A100 · **~$4** |
+| **RAFT** | full FT · 125.8M (100%) · 5.42M tok · 2 ep · 1×L4 · **~$0.30** | QLoRA · 20.8M (0.79%) · 5.54M tok · 2 ep · 1×A100 · **~$1.5** |
+| Training loss (SFT) | val 4.27 → **2.06** | train → **~0.62** |
+| Training loss (RAFT) | val 2.13 → **0.54** | train → **~0.16** |
+| Serves on | CPU (or in-browser) | **GPU** (2.6B needs one) |
+
+(The loss numbers are not directly comparable — different tokenizers, different vocab, full
+FT vs. QLoRA — but each shows healthy convergence. For a live quality comparison, use the
+toggle on the demo.)
+
+### The trade, which is the whole lesson
+- **From scratch (125M):** ~$36 to build, and it fits in a browser tab — but it is a toy;
+  its knowledge is only what our 2B-token corpus taught it.
+- **Pretrained + QLoRA (2B):** answers far more fluently for ~$6 of adaptation, because it
+  borrows a multi-million-dollar Google pretraining for free — but it needs a GPU to serve,
+  and none of that base knowledge is *ours*.
+- QLoRA trains **0.79%** of the weights and still moves the model decisively — the point of
+  parameter-efficient fine-tuning at this scale.
+
+### Serving (`gemma_inference.py`)
+Unlike the 125M endpoints (free CPU), Gemma needs a GPU, so this is a **scale-to-zero L4**:
+idle cost ≈ $0, a few cents per test session, wakes on the first request. It serves `/chat`
+(SFT model) and `/raft` (RAFT model) with the same SSE streaming as the 125M endpoints.
+
 ## Cost, honestly
 
 This project is *not* free — the GPU pretraining is the real expense, and being
@@ -573,7 +658,9 @@ honest about it helps you budget:
 | L4 (Modal) | ~$0.05 | Phase 8: 2-epoch fine-tune |
 | OpenRouter (minimax-m3) | ~$7.2 | Phase 9: RAFT dataset synthesis + judge |
 | L4 (Modal) | ~$0.3 | Phase 9: RAFT fine-tune + arc eval |
-| **Total usage** | **~$48** | Modal (~$39) + Gemini (~$2) + OpenRouter (~$7) |
+| A100 (Modal) | ~$5.5 | Phase 10: Gemma 2B QLoRA SFT (~$4) + RAFT (~$1.5) |
+| L4 (Modal) | ~$0.15 | Phase 10: Gemma QLoRA pilot |
+| **Total usage** | **~$54** | Modal (~$45) + Gemini (~$2) + OpenRouter (~$7) |
 
 Modal's free tier (~$30/month credits) absorbs most of the Modal spend; out-of-pocket
 for the Modal side was ~$9, and the fine-tuning stage (Phases 8) added only ~$2 of
@@ -607,6 +694,17 @@ fewer epochs or a single-H100 run cost proportionally less. Everything except Ph
    change the limit.
 10. **`minimax-m3` emits literal newlines inside its JSON strings.** Parse teacher
     output with `json.loads(text, strict=False)` or you will silently drop good rows.
+11. **Gemma 2 needs `attn_implementation="eager"` for training.** Its attention logit
+    soft-capping is only correct under eager attention; SDPA/flash silently skip it and
+    hurt quality. Slower, but required.
+12. **Gemma has no `system` role.** Its chat template only accepts `user`/`model`, so
+    merge any system instruction into the first user turn before `apply_chat_template`.
+13. **You can't cleanly merge LoRA into a 4-bit base.** Train QLoRA on the 4-bit model,
+    then reload the base in **bf16**, attach the adapter, and `merge_and_unload()` there
+    before saving the standalone model.
+14. **Pilot QLoRA on an L4 before the A100.** A 64-example, 1-epoch run validates the
+    whole 4-bit-load → LoRA → collator → merge path for cents; only then spend on the
+    full A100 run. (Testing does not need an H100.)
 
 ## Credits & license
 

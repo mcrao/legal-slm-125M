@@ -76,7 +76,7 @@ export default function Home() {
         <div style={{ marginTop: "1.9rem" }}>
           <ModelCompare />
         </div>
-        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "60ch" }}>
+        <p style={{ ...lead, marginTop: "1.6rem" }}>
           The trade is the whole lesson. Our 125M was built from a random init for ~$36 and
           is small enough to run in a browser tab — but it is a toy. Gemma borrows a $millions
           Google pretraining for free, trains <b>20.8M</b> adapter weights instead of all
@@ -134,7 +134,7 @@ export default function Home() {
       </Section>
 
       <Section n="09" eyebrow="Caveats" title="What this is, and is not">
-        <div style={{ display: "grid", gap: "1.1rem", maxWidth: "46rem" }}>
+        <div style={{ display: "grid", gap: "1.1rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
             been instruction-tuned, aligned, or shown a single question-answer pair.
@@ -163,10 +163,10 @@ function Hero() {
       <div className="wrap" style={{ paddingTop: "clamp(3.5rem, 9vw, 7rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>
         <div className="rise">
           <div className="eyebrow" style={{ marginBottom: "1.4rem" }}>A 125-million-parameter base language model</div>
-          <h1 className="display" style={{ fontSize: "clamp(2.6rem, 7vw, 5rem)", maxWidth: "20ch" }}>
+          <h1 className="display" style={{ fontSize: "clamp(2.6rem, 7vw, 5rem)", maxWidth: "26ch" }}>
             Legal &amp; financial language, learned from&nbsp;nothing.
           </h1>
-          <p style={{ marginTop: "1.75rem", maxWidth: "44ch", fontSize: "1.1rem", color: "var(--muted)", lineHeight: 1.6 }}>
+          <p style={{ marginTop: "1.75rem", maxWidth: "62ch", fontSize: "1.1rem", color: "var(--muted)", lineHeight: 1.65 }}>
             Trained from a random initialization on <b style={{ color: "var(--ink-soft)", fontWeight: 500 }}>2.04&nbsp;billion tokens</b> of US
             case law, SEC filings and educational web text, then asked to keep writing.
           </p>
@@ -199,7 +199,7 @@ function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; 
           <div className="rule-brass" style={{ transform: "translateY(-4px)" }} />
           <span className="eyebrow">{eyebrow}</span>
         </div>
-        <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3rem)", marginBottom: "0.5rem", maxWidth: "18ch" }}>{title}</h2>
+        <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3rem)", marginBottom: "0.5rem", maxWidth: "24ch" }}>{title}</h2>
         {children}
       </div>
     </section>
@@ -267,6 +267,6 @@ function Footer() {
 }
 
 /* ---------------- shared styles ---------------- */
-const lead: React.CSSProperties = { maxWidth: "52ch", fontSize: "1.08rem", color: "var(--muted)", lineHeight: 1.65 };
+const lead: React.CSSProperties = { fontSize: "1.08rem", color: "var(--muted)", lineHeight: 1.7 };
 const grid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "1px", background: "var(--line)", border: "1px solid var(--line)", borderRadius: 5, overflow: "hidden" };
 const numCell: React.CSSProperties = { background: "var(--paper-2)", padding: "1.6rem 1.5rem" };

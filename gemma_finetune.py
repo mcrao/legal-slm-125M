@@ -197,10 +197,29 @@ def token_stats() -> dict:
     return out
 
 
+@app.function(image=gpu_image, secrets=[hf_secret], timeout=60 * 10)
+def upload_readme(repo: str, content: str) -> str:
+    import os
+
+    from huggingface_hub import HfApi
+
+    api = HfApi(token=os.environ["HF_TOKEN"])
+    api.create_repo(repo, exist_ok=True, repo_type="model")
+    api.upload_file(path_or_fileobj=content.encode("utf-8"), path_in_repo="README.md",
+                    repo_id=repo, repo_type="model", commit_message="Add model card")
+    print(f"card -> https://huggingface.co/{repo}", flush=True)
+    return repo
+
+
 @app.local_entrypoint()
 def push(stage: str = "sft", repo: str = ""):
     repo = repo or f"jonam-ai/gemma-2-2b-legal-{stage}"
     push_to_hf.remote(stage=stage, repo=repo)
+
+
+@app.local_entrypoint()
+def card(repo: str, path: str):
+    upload_readme.remote(repo, open(path, encoding="utf-8").read())
 
 
 @app.local_entrypoint()
