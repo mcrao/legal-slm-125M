@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CHAT_PRESETS, CHAT_URL } from "@/app/lib/model";
+import { CHAT_PRESETS, CHAT_URL, GEMMA_URL, type Engine } from "@/app/lib/model";
 import { ensureLoaded, generateChat, isModelLoaded } from "@/app/lib/browserModel";
 
 type Role = "user" | "assistant";
@@ -13,6 +13,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [engine, setEngine] = useState<Engine>("slm");
   const [mode, setMode] = useState<Mode>("browser");
   const [dlProgress, setDlProgress] = useState(0);
   const [loadingModel, setLoadingModel] = useState(false);
@@ -45,8 +46,8 @@ export default function Chat() {
     setMessages((m) => [...m, { role: "user", content: message }, { role: "assistant", content: "" }]);
     setStatus("waking");
 
-    // ---- in-browser (transformers.js) ----
-    if (mode === "browser") {
+    // ---- in-browser (transformers.js) — only our 125M SLM ----
+    if (mode === "browser" && engine === "slm") {
       try {
         if (!isModelLoaded()) setLoadingModel(true);
         await ensureLoaded(setDlProgress);
@@ -67,7 +68,8 @@ export default function Chat() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const res = await fetch(`${CHAT_URL}/chat`, {
+      const base = engine === "gemma" ? GEMMA_URL : CHAT_URL;
+      const res = await fetch(`${base}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, max_new_tokens: 200, temperature: 0.7 }),
@@ -115,13 +117,13 @@ export default function Chat() {
 
   return (
     <div className="paper-card" style={{ padding: "clamp(1.1rem, 2.5vw, 1.75rem)", display: "flex", flexDirection: "column" }}>
-      {/* header: title + mode toggle */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: "0.35rem" }}>
+      {/* header: model toggle */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: "0.55rem" }}>
         <span className="eyebrow">Ask the assistant</span>
         <div style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
           <div className="seg">
-            <button data-active={mode === "server"} onClick={() => setMode("server")} disabled={busy}>Server</button>
-            <button data-active={mode === "browser"} onClick={() => setMode("browser")} disabled={busy}>⚡ In-browser</button>
+            <button data-active={engine === "slm"} onClick={() => setEngine("slm")} disabled={busy}>Our SLM · 125M</button>
+            <button data-active={engine === "gemma"} onClick={() => setEngine("gemma")} disabled={busy}>Gemma 2 · 2B</button>
           </div>
           {messages.length > 0 && (
             <button onClick={reset} className="mono" style={{ fontSize: "0.72rem", color: "var(--faint)", background: "none", border: "none", cursor: "pointer" }}>
@@ -130,9 +132,24 @@ export default function Chat() {
           )}
         </div>
       </div>
-      <p className="mono" style={{ fontSize: "0.7rem", color: "var(--faint)", margin: "0 0 1rem" }}>
-        {mode === "server" ? "runs on a hosted server" : "runs entirely in your browser"}
-      </p>
+      {/* secondary: where it runs (only our SLM can run in the browser) */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap", margin: "0 0 1rem" }}>
+        {engine === "slm" ? (
+          <>
+            <div className="seg" style={{ transform: "scale(0.92)", transformOrigin: "left center" }}>
+              <button data-active={mode === "server"} onClick={() => setMode("server")} disabled={busy}>Server</button>
+              <button data-active={mode === "browser"} onClick={() => setMode("browser")} disabled={busy}>⚡ In-browser</button>
+            </div>
+            <span className="mono" style={{ fontSize: "0.7rem", color: "var(--faint)" }}>
+              {mode === "server" ? "full fine-tune · hosted CPU" : "full fine-tune · runs in your browser"}
+            </span>
+          </>
+        ) : (
+          <span className="mono" style={{ fontSize: "0.7rem", color: "var(--faint)" }}>
+            QLoRA fine-tune · runs on a hosted GPU (scale-to-zero, wakes on first message)
+          </span>
+        )}
+      </div>
 
       {/* messages */}
       <div ref={scrollRef} style={{ minHeight: "16rem", maxHeight: "26rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "1rem", padding: "0.25rem" }}>
@@ -187,8 +204,10 @@ export default function Chat() {
       </form>
 
       <p style={{ marginTop: "0.9rem", fontSize: "0.8rem", color: "var(--faint)", lineHeight: 1.6 }}>
-        A 125M fine-tuned model. It answers one question at a time and will confidently
-        invent case names and figures. Not legal or financial advice.
+        {engine === "slm"
+          ? "Our 125M model, fully fine-tuned. Small enough to run in your browser — and it will confidently invent case names and figures."
+          : "Gemma 2 2B, fine-tuned on the same data with QLoRA (0.79% of weights trained). Larger and more fluent, but 20× the size. Wakes on the first message."}
+        {" "}Not legal or financial advice.
       </p>
     </div>
   );

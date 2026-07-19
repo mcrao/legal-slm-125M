@@ -16,6 +16,46 @@ export const HF_URL = "https://huggingface.co/jonam-ai/slm-125m-base";
 export const HF_SFT_URL = "https://huggingface.co/jonam-ai/legal-slm-125m-sft";
 export const HF_RAFT_URL = "https://huggingface.co/jonam-ai/legal-slm-125m-raft";
 
+// Gemma 2 2B, fine-tuned on the same data with QLoRA — for side-by-side comparison.
+export const GEMMA_URL =
+  process.env.NEXT_PUBLIC_GEMMA_URL ??
+  "https://mcrao--gemma-2b-legal-inference-gemma-web.modal.run";
+export const HF_GEMMA_SFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-sft";
+export const HF_GEMMA_RAFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-raft";
+
+// The two engines the Chat / RAFT panels can talk to.
+export type Engine = "slm" | "gemma";
+export const ENGINES: { id: Engine; label: string; sub: string }[] = [
+  { id: "slm", label: "Our SLM · 125M", sub: "built from scratch · full fine-tune" },
+  { id: "gemma", label: "Gemma 2 · 2B", sub: "Google pretrained · QLoRA" },
+];
+
+// Per-model, per-phase facts for the comparison table.
+export const COMPARE = {
+  slm: {
+    name: "Our SLM · 125M",
+    tag: "from scratch",
+    arch: "Llama-style decoder · 12 layers · 768 dim · 12 heads · 16,384 vocab · 1,024 ctx",
+    params: "125.8M",
+    phases: [
+      { phase: "Pretrain", method: "full (from random init)", trainable: "125.8M · 100%", tokens: "4.08B", note: "2 epochs", gpu: "8×H100", cost: "~$36" },
+      { phase: "SFT", method: "full fine-tune", trainable: "125.8M · 100%", tokens: "1.06M", note: "2 epochs · 5,846 Q&A", gpu: "1×L4", cost: "~$0.05" },
+      { phase: "RAFT", method: "full fine-tune", trainable: "125.8M · 100%", tokens: "5.42M", note: "2 epochs · 3,866 ctx", gpu: "1×L4", cost: "~$0.30" },
+    ],
+  },
+  gemma: {
+    name: "Gemma 2 · 2B",
+    tag: "pretrained · QLoRA",
+    arch: "Gemma 2 decoder · 26 layers · 2,304 dim · 8 heads / 4 KV (GQA) · 256,000 vocab · 8,192 ctx",
+    params: "2.61B",
+    phases: [
+      { phase: "Base", method: "pretrained by Google", trainable: "—", tokens: "~2T", note: "we pay nothing", gpu: "Google TPUs", cost: "$0" },
+      { phase: "SFT", method: "QLoRA · 4-bit NF4", trainable: "20.8M · 0.79%", tokens: "1.52M", note: "3 epochs · 5,846 Q&A", gpu: "1×A100", cost: "~$4" },
+      { phase: "RAFT", method: "QLoRA · 4-bit NF4", trainable: "20.8M · 0.79%", tokens: "5.54M", note: "2 epochs · 3,866 ctx", gpu: "1×A100", cost: "~$1.5" },
+    ],
+  },
+} as const;
+
 export const RAFT_EXAMPLES = [
   {
     label: "Lease rent (with distractor)",

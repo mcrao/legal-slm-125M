@@ -1,4 +1,5 @@
 import Chat from "@/app/components/Chat";
+import ModelCompare from "@/app/components/ModelCompare";
 import Nav from "@/app/components/Nav";
 import Playground from "@/app/components/Playground";
 import Raft from "@/app/components/Raft";
@@ -64,7 +65,27 @@ export default function Home() {
         <Raft />
       </Section>
 
-      <Section n="04" eyebrow="The numbers" title="Small model, honest accounting">
+      <Section n="04" eyebrow="Compare" title="Same data, two very different models">
+        <p style={lead}>
+          We ran the <em>identical</em> SFT and RAFT datasets through a real pretrained
+          model — <a href="https://huggingface.co/google/gemma-2-2b-it" target="_blank" rel="noopener" className="link-underline" style={{ color: "var(--brass)" }}>Gemma&nbsp;2&nbsp;2B ↗</a> —
+          using QLoRA (4-bit base, only 0.79% of weights trained). Flip the toggle in the
+          Chat and RAFT panels above to talk to either one. Here is exactly what each
+          phase costs and trains.
+        </p>
+        <div style={{ marginTop: "1.9rem" }}>
+          <ModelCompare />
+        </div>
+        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "60ch" }}>
+          The trade is the whole lesson. Our 125M was built from a random init for ~$36 and
+          is small enough to run in a browser tab — but it is a toy. Gemma borrows a $millions
+          Google pretraining for free, trains <b>20.8M</b> adapter weights instead of all
+          2.6B, and answers far more fluently — but it needs a GPU to serve, and every token
+          it &quot;knows&quot; came from someone else&apos;s pretraining, not ours.
+        </p>
+      </Section>
+
+      <Section n="05" eyebrow="The numbers" title="Small model, honest accounting">
         <div style={grid3}>
           {NUMBERS.map((x) => (
             <div key={x.k} style={numCell}>
@@ -76,7 +97,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="05" eyebrow="Training" title="Perplexity, falling">
+      <Section n="06" eyebrow="Training" title="Perplexity, falling">
         <p style={lead}>
           Held-out perplexity measured on a 20.6-million-token validation set the model
           never trained on. Two epochs, 7,778 optimizer steps, from a random start to{" "}
@@ -87,7 +108,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="06" eyebrow="Architecture" title="A Llama, in miniature">
+      <Section n="07" eyebrow="Architecture" title="A Llama, in miniature">
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "2.5rem", alignItems: "start" }}>
           <dl style={{ margin: 0, display: "grid", gap: 0 }}>
             {ARCH.map((a, i) => (
@@ -101,7 +122,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="07" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
+      <Section n="08" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
         <p style={lead}>
           Streamed from public datasets, then run through a deterministic pipeline:
           rule-based cleaning, an OCR-garble gate, MinHash-LSH near-duplicate removal,
@@ -112,7 +133,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="08" eyebrow="Caveats" title="What this is, and is not">
+      <Section n="09" eyebrow="Caveats" title="What this is, and is not">
         <div style={{ display: "grid", gap: "1.1rem", maxWidth: "46rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
@@ -169,7 +190,7 @@ function Hero() {
 }
 
 function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: string; children: React.ReactNode }) {
-  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Architecture" ? "arch" : undefined;
+  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Architecture" ? "arch" : undefined;
   return (
     <section id={anchor} style={{ borderTop: "1px solid var(--line)" }}>
       <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>

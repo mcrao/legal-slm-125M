@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { RAFT_EXAMPLES, RAFT_URL } from "@/app/lib/model";
+import { GEMMA_URL, RAFT_EXAMPLES, RAFT_URL, type Engine } from "@/app/lib/model";
 
 type Status = "idle" | "waking" | "streaming" | "done" | "error";
 
@@ -9,6 +9,7 @@ export default function Raft() {
   const [context, setContext] = useState<string>(RAFT_EXAMPLES[0].context);
   const [question, setQuestion] = useState<string>(RAFT_EXAMPLES[0].question);
   const [answer, setAnswer] = useState<string>("");
+  const [engine, setEngine] = useState<Engine>("slm");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -31,7 +32,8 @@ export default function Raft() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const res = await fetch(`${RAFT_URL}/raft`, {
+      const base = engine === "gemma" ? GEMMA_URL : RAFT_URL;
+      const res = await fetch(`${base}/raft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ context, question, max_new_tokens: 180, temperature: 0.5 }),
@@ -70,6 +72,20 @@ export default function Raft() {
 
   return (
     <div className="paper-card" style={{ padding: "clamp(1.25rem, 3vw, 2rem)" }}>
+      {/* model toggle */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+        <span className="eyebrow">Answer from context</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap" }}>
+          <div className="seg">
+            <button data-active={engine === "slm"} onClick={() => !busy && setEngine("slm")} disabled={busy}>Our SLM · 125M</button>
+            <button data-active={engine === "gemma"} onClick={() => !busy && setEngine("gemma")} disabled={busy}>Gemma 2 · 2B</button>
+          </div>
+          <span className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)" }}>
+            {engine === "slm" ? "full FT · hosted CPU" : "QLoRA · hosted GPU"}
+          </span>
+        </div>
+      </div>
+
       <div className="eyebrow" style={{ marginBottom: "0.7rem" }}>Try an example</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.3rem" }}>
         {RAFT_EXAMPLES.map((ex, i) => (
@@ -128,7 +144,11 @@ export default function Raft() {
       </div>
 
       <p style={{ marginTop: "1rem", fontSize: "0.8rem", color: "var(--faint)", lineHeight: 1.6 }}>
-        RAFT (Retrieval-Augmented Fine-Tuning): the model answers from the context you provide and ignores distractors. Keep the context short (the model has a 1,024-token window). Not legal or financial advice.
+        RAFT (Retrieval-Augmented Fine-Tuning): the model answers from the context you provide and ignores distractors.{" "}
+        {engine === "slm"
+          ? "Our 125M model has a 1,024-token window, so keep the context short."
+          : "Gemma 2B was QLoRA-tuned on the same RAFT data (0.79% of weights) and wakes on your first request."}
+        {" "}Not legal or financial advice.
       </p>
     </div>
   );

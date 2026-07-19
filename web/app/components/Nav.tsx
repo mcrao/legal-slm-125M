@@ -8,6 +8,7 @@ const LINKS = [
   { id: "play", label: "Playground", small: false },
   { id: "chat", label: "Chat", small: false },
   { id: "raft", label: "RAFT", small: false },
+  { id: "compare", label: "Compare", small: true },
   { id: "arch", label: "Architecture", small: true },
 ];
 

@@ -428,3 +428,71 @@ def build(n_passages: int = 7500, shards: int = 4):
 @app.local_entrypoint()
 def curate_run():
     curate.remote()
+
+
+@app.function(image=image, volumes=VOLUMES, timeout=60 * 20, cpu=4.0, memory=8_192)
+def export_text(seed: int = 7) -> dict:
+    """Emit the assembled RAFT examples as {context, question, answer} TEXT, so any
+    tokenizer (e.g. Gemma's) can consume them. Same assembly as curate()."""
+    import glob
+    import json
+    import os
+    import random
+    import re
+
+    from datasketch import MinHash, MinHashLSH
+
+    rng = random.Random(seed)
+    volume.reload()
+    pool = [json.loads(l) for l in open(PASSAGES_PATH, encoding="utf-8")]
+    pool_by_id = {p["id"]: p["text"] for p in pool}
+    all_ids = list(pool_by_id.keys())
+
+    rows = []
+    for path in sorted(glob.glob(f"{JUDGED_DIR}/*.jsonl")):
+        rows.extend(json.loads(l) for l in open(path, encoding="utf-8"))
+
+    def norm(q):
+        return re.sub(r"[^a-z0-9 ]", "", re.sub(r"\s+", " ", q.lower())).strip()
+    seen, uniq = set(), []
+    lsh = MinHashLSH(threshold=0.7, num_perm=64)
+    for i, r in enumerate(rows):
+        n = norm(r["question"])
+        if not n or n in seen:
+            continue
+        words = n.split()
+        m = MinHash(num_perm=64)
+        for s in {" ".join(words[j:j+4]) for j in range(max(1, len(words)-3))} or set(words):
+            m.update(s.encode())
+        if lsh.query(m):
+            continue
+        lsh.insert(str(i), m); seen.add(n); uniq.append(r)
+
+    out = []
+    for r in uniq:
+        distractors = []
+        while len(distractors) < N_DISTRACTORS:
+            did = rng.choice(all_ids)
+            if did != r["oracle_id"]:
+                distractors.append(pool_by_id[did])
+        docs = ([r["oracle"]] if rng.random() < P_ORACLE else []) + distractors
+        rng.shuffle(docs)
+        out.append({"context": _build_context(docs), "question": r["question"], "answer": r["cot_answer"]})
+
+    rng.shuffle(out)
+    n_val = max(80, int(len(out) * VAL_FRACTION))
+    os.makedirs(DATASET_DIR, exist_ok=True)
+    with open(f"{DATASET_DIR}/raft_text_val.jsonl", "w", encoding="utf-8") as fh:
+        for e in out[:n_val]:
+            fh.write(json.dumps(e, ensure_ascii=False) + "\n")
+    with open(f"{DATASET_DIR}/raft_text_train.jsonl", "w", encoding="utf-8") as fh:
+        for e in out[n_val:]:
+            fh.write(json.dumps(e, ensure_ascii=False) + "\n")
+    volume.commit()
+    print(f"exported {len(out)} RAFT text examples ({len(out)-n_val} train / {n_val} val)")
+    return {"total": len(out), "val": n_val}
+
+
+@app.local_entrypoint()
+def export_text_run():
+    export_text.remote()
