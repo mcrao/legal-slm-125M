@@ -36,14 +36,40 @@ MENTOR_TOK_DIR = f"{RAFT_DIR}/mentor_tokenizer"
 
 CHUNK_CHARS = 850          # ~210 tokens per passage
 N_DISTRACTORS = 2          # docs added beside the oracle
-P_ORACLE = 0.8             # fraction of examples that keep the oracle in context
+# Fraction of examples that keep the oracle in context. The rest are oracle-absent and
+# labeled with an ABSTENTION (see REFUSALS), teaching the model to say "not in the context"
+# instead of fabricating. Gemma 2B uses 0.75 (25% abstention) and learns to abstain cleanly.
+# The 125M SLM has NO capacity for this: at 25/16/10% abstention it collapses to refusing
+# *every* question, so it is trained grounded-only (curate_run --p-oracle 1.0) and will
+# instead hallucinate on truly out-of-context questions. Faithful abstention needs scale.
+P_ORACLE = 0.75
 MAX_LEN = 1024
 VAL_FRACTION = 0.05
 SOURCE_WEIGHTS = {"case-law": 0.45, "sec": 0.45, "fineweb-edu": 0.10}
 
 RAFT_SYSTEM = ("You are a legal and financial assistant. Use the numbered context "
                "documents to answer the question. Quote the text you rely on, then "
-               "give the final answer.")
+               "give the final answer. If the context does not contain the answer, "
+               "say you cannot find it in the provided context instead of guessing.")
+
+# When the oracle document is absent, the answer is NOT in the context. The target is
+# an abstention, so the model learns to refuse rather than fabricate a quote/answer.
+# Several paraphrases so no single fixed string becomes a runaway attractor for a small model.
+REFUSALS = [
+    "The provided context does not contain the information needed to answer this question.\nFinal answer: Not stated in the provided context.",
+    "I cannot find the answer to this question in the provided context documents.\nFinal answer: Not found in the provided context.",
+    "The context documents do not address this question, so I cannot answer it from them.\nFinal answer: The provided context does not contain this information.",
+    "None of the provided documents discuss this, so the answer is not available from the context.\nFinal answer: Not covered by the provided context.",
+    "The supplied context has no information relevant to this question.\nFinal answer: The context does not say.",
+    "I do not see anything in the provided documents that answers this question.\nFinal answer: Not found in the provided documents.",
+    "This question cannot be answered from the given context.\nFinal answer: The provided context does not contain the answer.",
+    "The documents provided do not mention this, so I cannot answer from them.\nFinal answer: Not addressed in the provided context.",
+]
+
+
+def _answer_for(rng, cot_answer, include_oracle):
+    """Grounded answer when the oracle is present; an abstention when it is absent."""
+    return cot_answer if include_oracle else rng.choice(REFUSALS)
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -261,7 +287,7 @@ def _build_context(docs):
 
 
 @app.function(image=image, volumes=VOLUMES, timeout=60 * 30, cpu=4.0, memory=8_192)
-def curate(seed: int = 7) -> dict:
+def curate(seed: int = 7, p_oracle: float = P_ORACLE) -> dict:
     import glob
     import json
     import os
@@ -327,10 +353,11 @@ def curate(seed: int = 7) -> dict:
             did = rng.choice(all_ids)
             if did != r["oracle_id"]:
                 distractors.append(pool_by_id[did])
-        include_oracle = rng.random() < P_ORACLE
+        include_oracle = rng.random() < p_oracle
         docs = ([r["oracle"]] if include_oracle else []) + distractors
         rng.shuffle(docs)
-        enc = encode(_build_context(docs), r["question"], r["cot_answer"])
+        answer = _answer_for(rng, r["cot_answer"], include_oracle)
+        enc = encode(_build_context(docs), r["question"], answer)
         if enc is None:
             continue
         ii, ll = enc
@@ -354,7 +381,7 @@ def curate(seed: int = 7) -> dict:
     va_tok = write("val", val)
     meta = {"final": len(examples), "train": len(train), "val": len(val),
             "with_oracle": n_oracle, "no_oracle": len(examples) - n_oracle,
-            "n_distractors": N_DISTRACTORS, "p_oracle": P_ORACLE, "max_len": MAX_LEN,
+            "n_distractors": N_DISTRACTORS, "p_oracle": p_oracle, "max_len": MAX_LEN,
             "train_answer_tokens": tr_tok, "val_answer_tokens": va_tok, "tokenizer": MENTOR_MODEL}
     with open(f"{DATASET_DIR}/meta.json", "w", encoding="utf-8") as fh:
         json.dump(meta, fh, indent=2)
@@ -426,8 +453,8 @@ def build(n_passages: int = 7500, shards: int = 4):
 
 
 @app.local_entrypoint()
-def curate_run():
-    curate.remote()
+def curate_run(p_oracle: float = P_ORACLE):
+    curate.remote(p_oracle=p_oracle)
 
 
 @app.function(image=image, volumes=VOLUMES, timeout=60 * 20, cpu=4.0, memory=8_192)
@@ -475,9 +502,11 @@ def export_text(seed: int = 7) -> dict:
             did = rng.choice(all_ids)
             if did != r["oracle_id"]:
                 distractors.append(pool_by_id[did])
-        docs = ([r["oracle"]] if rng.random() < P_ORACLE else []) + distractors
+        include_oracle = rng.random() < P_ORACLE
+        docs = ([r["oracle"]] if include_oracle else []) + distractors
         rng.shuffle(docs)
-        out.append({"context": _build_context(docs), "question": r["question"], "answer": r["cot_answer"]})
+        answer = _answer_for(rng, r["cot_answer"], include_oracle)
+        out.append({"context": _build_context(docs), "question": r["question"], "answer": answer})
 
     rng.shuffle(out)
     n_val = max(80, int(len(out) * VAL_FRACTION))

@@ -534,10 +534,33 @@ to answer from *context you provide*, and to ignore irrelevant distractor docume
 ### The idea
 Each RAFT example is `question + [oracle doc + distractor docs] → grounded answer`. Two
 tricks: mix the oracle with distractors so the model learns to find the signal, and for a
-fraction of examples remove the oracle so it does not blindly trust retrieval. The answer
-quotes the source span (`##begin_quote## … ##end_quote##`), then states the final answer.
-Adapted for a **1,024-token** model: short ~200-token chunks, 2 distractors, 81%
-oracle-present / 19% distractor-only.
+fraction of examples remove the oracle. The answer quotes the source span
+(`##begin_quote## … ##end_quote##`), then states the final answer. Adapted for a
+**1,024-token** model: short ~200-token chunks, 2 distractors, **75% oracle-present /
+25% oracle-absent**.
+
+**Faithfulness — and a sharp lesson in scale.** In the original RAFT recipe, the
+oracle-absent examples *keep the grounded answer* as the target (to build parametric-memory
+robustness). The side effect is fatal for a RAG demo: the model learns to produce a
+confident answer, with an invented quote, even when the context does not contain the
+answer — so it happily "answers" questions about entities that appear nowhere in the
+documents. The fix is to **label every oracle-absent example with an abstention** ("The
+provided context does not contain the information needed to answer this question."), so the
+model is trained to decline instead of fabricate. `raft.py::_answer_for` does this.
+
+Then the models disagreed, and that disagreement is the interesting result:
+
+- **Gemma 2 2B (QLoRA) learns it cleanly.** At 25% abstention it now refuses out-of-context
+  questions ("Who is *X*?" against an unrelated filing → *"The context documents do not
+  address this question…"*) **and still answers** grounded ones. Verified live.
+- **The 125M SLM cannot do it at all.** At 25%, 16%, and 10% abstention it *collapses into
+  refusing every question*, including ones whose answer is plainly in the context. There is
+  no middle setting: a model this small can't condition "answer vs. decline" on whether the
+  fact is present. So the SLM is trained **grounded-only** (`curate_run --p-oracle 1.0`): it
+  answers the examples, but will still **hallucinate** on truly out-of-context questions.
+
+That contrast — a 2B model abstains correctly, a 125M model structurally can't — is one of
+the most honest things in the whole project. **Faithful abstention needs scale.**
 
 ### The dataset (`raft.py`)
 Same teacher-distillation shape as SFT, but with **OpenRouter `minimax/minimax-m3`** as

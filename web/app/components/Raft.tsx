@@ -146,8 +146,8 @@ export default function Raft() {
       <p style={{ marginTop: "1rem", fontSize: "0.8rem", color: "var(--faint)", lineHeight: 1.6 }}>
         RAFT (Retrieval-Augmented Fine-Tuning): the model answers from the context you provide and ignores distractors.{" "}
         {engine === "slm"
-          ? "Our 125M model has a 1,024-token window, so keep the context short."
-          : "Gemma 2B was QLoRA-tuned on the same RAFT data (0.79% of weights) and wakes on your first request."}
+          ? "Our 125M model answers from context, but is too small to reliably know when the answer isn't there — ask about something absent and it will confidently make one up. That limit is the point."
+          : "Gemma 2B was QLoRA-tuned on the same data (0.79% of weights) to decline when the answer isn't in the context, instead of guessing. Wakes on your first request."}
         {" "}Not legal or financial advice.
       </p>
     </div>

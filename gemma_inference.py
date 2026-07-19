@@ -23,7 +23,9 @@ SFT_REPO = "jonam-ai/gemma-2-2b-legal-sft"
 RAFT_REPO = "jonam-ai/gemma-2-2b-legal-raft"
 SFT_SYSTEM = "You are a knowledgeable legal and financial assistant. Answer accurately and concisely."
 RAFT_SYSTEM = ("You are a legal and financial assistant. Use the numbered context documents "
-               "to answer the question. Quote the text you rely on, then give the final answer.")
+               "to answer the question. Quote the text you rely on, then give the final answer. "
+               "If the context does not contain the answer, say you cannot find it in the "
+               "provided context instead of guessing.")
 
 hf_cache = modal.Volume.from_name("legal-slm-hf-cache", create_if_missing=True)
 

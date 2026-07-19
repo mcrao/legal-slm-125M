@@ -25,8 +25,16 @@ The LoRA adapters are merged, so this is a standalone model.
 
 RAFT teaches the model to answer **from a context you hand it** — quoting the exact
 supporting text and ignoring irrelevant "distractor" passages. Each training example
-pairs the correct (oracle) document with distractors, and for ~20% of examples the oracle
-is removed entirely, so the model learns not to blindly trust whatever it is given.
+pairs the correct (oracle) document with distractors, and for ~25% of examples the oracle
+is removed entirely.
+
+**Faithfulness / abstention.** Those oracle-absent examples are labeled with an
+**abstention** ("The provided context does not contain the information needed to answer
+this question."), not a fabricated answer. So the model is explicitly trained to say it
+cannot find the answer when the context does not contain it, instead of inventing a quote —
+the failure mode that plain RAFT (which keeps the answer when the oracle is dropped)
+produces. Ask it about something absent from your context and it should decline rather
+than hallucinate.
 
 - **Live demo (RAFT panel, toggle to Gemma 2B):** https://legal-slm-125.vercel.app
 - **Trained-from-scratch counterpart:** [jonam-ai/legal-slm-125m-raft](https://huggingface.co/jonam-ai/legal-slm-125m-raft)

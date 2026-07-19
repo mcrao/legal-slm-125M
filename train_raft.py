@@ -19,15 +19,18 @@ DATASET_DIR = f"{config.DATA_ROOT}/raft/dataset"
 OUT_DIR = f"{config.DATA_ROOT}/raft/model"
 RAFT_SYSTEM = ("You are a legal and financial assistant. Use the numbered context "
                "documents to answer the question. Quote the text you rely on, then "
-               "give the final answer.")
+               "give the final answer. If the context does not contain the answer, "
+               "say you cannot find it in the provided context instead of guessing.")
 
 gpu_image = (
     modal.Image.debian_slim(python_version="3.12")
-    .pip_install("torch==2.5.1", "transformers==4.46.3", "numpy==1.26.4", "safetensors==0.4.5")
+    .pip_install("torch==2.5.1", "transformers==4.46.3", "numpy==1.26.4",
+                 "safetensors==0.4.5", "huggingface_hub==0.26.2")
     .add_local_python_source("config")
 )
 volume = modal.Volume.from_name(config.VOLUME_NAME, create_if_missing=True)
 VOLUMES = {config.DATA_ROOT: volume}
+hf_secret = modal.Secret.from_name("huggingface-token")
 
 
 @app.function(image=gpu_image, gpu="L4", volumes=VOLUMES, timeout=60 * 40)
@@ -140,6 +143,26 @@ def raft(epochs: float = 2.0, lr: float = 2e-5, batch_size: int = 16,
     return {"final_val_loss": final_val, "tokens": tokens_seen, "steps": step}
 
 
+@app.function(image=gpu_image, volumes=VOLUMES, secrets=[hf_secret], timeout=60 * 20)
+def push_to_hf(repo: str = "jonam-ai/legal-slm-125m-raft") -> str:
+    import os
+
+    from huggingface_hub import HfApi
+
+    volume.reload()
+    api = HfApi(token=os.environ["HF_TOKEN"])
+    api.create_repo(repo, exist_ok=True, repo_type="model")
+    api.upload_folder(folder_path=OUT_DIR, repo_id=repo, repo_type="model",
+                      commit_message="RAFT fine-tune with abstention on missing context")
+    print(f"pushed {OUT_DIR} -> https://huggingface.co/{repo}", flush=True)
+    return repo
+
+
 @app.local_entrypoint()
 def run(epochs: float = 2.0, lr: float = 2e-5):
     raft.remote(epochs=epochs, lr=lr)
+
+
+@app.local_entrypoint()
+def push(repo: str = "jonam-ai/legal-slm-125m-raft"):
+    push_to_hf.remote(repo=repo)

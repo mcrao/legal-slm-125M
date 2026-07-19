@@ -20,7 +20,8 @@ image = (
 MODEL_ID = "jonam-ai/legal-slm-125m-raft"
 RAFT_SYSTEM = ("You are a legal and financial assistant. Use the numbered context "
                "documents to answer the question. Quote the text you rely on, then "
-               "give the final answer.")
+               "give the final answer. If the context does not contain the answer, "
+               "say you cannot find it in the provided context instead of guessing.")
 
 hf_cache = modal.Volume.from_name("legal-slm-hf-cache", create_if_missing=True)
 

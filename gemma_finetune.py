@@ -23,7 +23,9 @@ RAFT_TRAIN = f"{config.DATA_ROOT}/raft/dataset/raft_text_train.jsonl"
 GEMMA_DIR = f"{config.DATA_ROOT}/gemma"
 SFT_SYSTEM = "You are a knowledgeable legal and financial assistant. Answer accurately and concisely."
 RAFT_SYSTEM = ("You are a legal and financial assistant. Use the numbered context documents "
-               "to answer the question. Quote the text you rely on, then give the final answer.")
+               "to answer the question. Quote the text you rely on, then give the final answer. "
+               "If the context does not contain the answer, say you cannot find it in the "
+               "provided context instead of guessing.")
 
 gpu_image = (
     modal.Image.debian_slim(python_version="3.12")
