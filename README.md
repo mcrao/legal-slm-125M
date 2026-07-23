@@ -58,9 +58,10 @@ same data. Both are on the live demo (toggle in the Chat and RAFT panels).
 9. [Fine-tuning: from base model to Q&A assistant](#fine-tuning-from-base-model-to-qa-assistant)
 10. [RAFT: grounding the model in retrieved context](#raft-grounding-the-model-in-retrieved-context)
 11. [Comparison: 125M from scratch vs. Gemma 2 2B (QLoRA)](#comparison-125m-from-scratch-vs-gemma-2-2b-qlora)
-12. [Cost, honestly](#cost-honestly)
-13. [Gotchas we already paid for](#gotchas-we-already-paid-for)
-14. [Credits & license](#credits--license)
+12. [Inference optimizations (live demos)](#inference-optimizations-live-demos)
+13. [Cost, honestly](#cost-honestly)
+14. [Gotchas we already paid for](#gotchas-we-already-paid-for)
+15. [Credits & license](#credits--license)
 
 ---
 
@@ -106,6 +107,8 @@ so any phase can be re-run or resumed independently.
 | `raft_eval.py` | Evaluates the base → SFT → RAFT arc (perplexity + answer-match accuracy) |
 | `gemma_finetune.py` | Phase 10: QLoRA SFT + RAFT of Gemma 2 2B on the same datasets, merge, HF push |
 | `gemma_inference.py` | Modal scale-to-zero **GPU** endpoint serving the Gemma SFT + RAFT models |
+| `inference_kv.py` | KV-cache benchmark endpoint (125M, L4): same generation with/without `use_cache`, batch-size slider |
+| `inference_spec.py` | Speculative-decoding endpoint (Qwen2.5 7B target + 0.5B draft): throughput, acceptance rate, per-token provenance |
 | `modelcards/` | Hugging Face model cards for the Gemma and ONNX models |
 
 ## Prerequisites
@@ -666,6 +669,33 @@ toggle on the demo.)
 Unlike the 125M endpoints (free CPU), Gemma needs a GPU, so this is a **scale-to-zero L4**:
 idle cost ≈ $0, a few cents per test session, wakes on the first request. It serves `/chat`
 (SFT model) and `/raft` (RAFT model) with the same SSE streaming as the 125M endpoints.
+
+## Inference optimizations (live demos)
+
+The **Inference** section of the site runs two of the optimizations every real serving stack
+uses, live on scale-to-zero GPUs, so you can watch the throughput move.
+
+### KV cache (`inference_kv.py`)
+The 125M model generates the same greedy output **with and without** `use_cache`, at a batch
+size you choose. Without the cache the model recomputes attention over the whole growing
+sequence every step (O(n²)); with it, each step is O(n). At batch 1 on a fast GPU the tiny
+model is launch-overhead-bound and the gap is invisible — but **raising the batch size makes
+it compute-bound and the gap explodes**: on an L4, measured ~1.1× at batch 8, ~3.3× at batch
+32, and **~7.5× at batch 64**. Same output, one flag.
+
+### Speculative decoding (`inference_spec.py`)
+A small **draft** (Qwen2.5-0.5B-Instruct) proposes K tokens; the large **target**
+(Qwen2.5-7B-Instruct) verifies them in a single forward and keeps the longest prefix it agrees
+with — *exact* greedy output, fewer expensive target steps. Implemented manually to expose
+**per-token provenance** (draft-accepted vs. target-produced) and the **draft acceptance rate**.
+
+The headline finding is honest and prompt-dependent: the speedup rides entirely on acceptance.
+On structured text ("list the integers from 1 to 40") the 0.5B draft hits **~100% acceptance
+and ~1.7× throughput**; on a creative poem it drops to **~26% acceptance and ~0.7× (a
+slowdown)**, because verification overhead outweighs the savings. Speculative decoding is not
+free lunch — it is a bet that a small model can guess what a big one will say. (Note: HF's
+built-in assisted generation was actually *slower* than greedy for this pair on both L4 and
+A100 — the draft/target per-forward overhead is too close at 0.5B/7B unless acceptance is high.)
 
 ## Cost, honestly
 

@@ -1,8 +1,10 @@
 import Chat from "@/app/components/Chat";
+import KvCache from "@/app/components/KvCache";
 import ModelCompare from "@/app/components/ModelCompare";
 import Nav from "@/app/components/Nav";
 import Playground from "@/app/components/Playground";
 import Raft from "@/app/components/Raft";
+import Speculative from "@/app/components/Speculative";
 import { DonutMix, TrainingCurve } from "@/app/components/Visuals";
 import { ARCH, HERO_STATS, HF_RAFT_URL, HF_SFT_URL, HF_URL, NUMBERS, RAFT_STATS, SFT_STATS } from "@/app/lib/model";
 
@@ -85,7 +87,28 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="05" eyebrow="The numbers" title="Small model, honest accounting">
+      <Section n="05" eyebrow="Inference" title="Making generation fast">
+        <p style={lead}>
+          Two optimizations every real serving stack uses, running live on GPUs. The first is
+          exact and free; the second is exact but only pays off when a small model can guess
+          what a big one will say.
+        </p>
+
+        <div style={{ marginTop: "2rem", display: "grid", gap: "1.5rem", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))" }}>
+          <KvCache />
+          <Speculative />
+        </div>
+
+        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "70ch" }}>
+          The lesson in both: throughput is not one number. The KV cache turns a quadratic
+          cost linear, and its payoff grows with how many users you batch together. Speculative
+          decoding trades extra draft compute for fewer expensive target steps, and only wins
+          when the draft agrees often enough — try a numbered list versus a poem and watch the
+          acceptance rate, and the speedup, move together.
+        </p>
+      </Section>
+
+      <Section n="06" eyebrow="The numbers" title="Small model, honest accounting">
         <div style={grid3}>
           {NUMBERS.map((x) => (
             <div key={x.k} style={numCell}>
@@ -97,7 +120,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="06" eyebrow="Training" title="Perplexity, falling">
+      <Section n="07" eyebrow="Training" title="Perplexity, falling">
         <p style={lead}>
           Held-out perplexity measured on a 20.6-million-token validation set the model
           never trained on. Two epochs, 7,778 optimizer steps, from a random start to{" "}
@@ -108,7 +131,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="07" eyebrow="Architecture" title="A Llama, in miniature">
+      <Section n="08" eyebrow="Architecture" title="A Llama, in miniature">
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "2.5rem", alignItems: "start" }}>
           <dl style={{ margin: 0, display: "grid", gap: 0 }}>
             {ARCH.map((a, i) => (
@@ -122,7 +145,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="08" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
+      <Section n="09" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
         <p style={lead}>
           Streamed from public datasets, then run through a deterministic pipeline:
           rule-based cleaning, an OCR-garble gate, MinHash-LSH near-duplicate removal,
@@ -133,7 +156,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="09" eyebrow="Caveats" title="What this is, and is not">
+      <Section n="10" eyebrow="Caveats" title="What this is, and is not">
         <div style={{ display: "grid", gap: "1.1rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
@@ -190,7 +213,7 @@ function Hero() {
 }
 
 function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: string; children: React.ReactNode }) {
-  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Architecture" ? "arch" : undefined;
+  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Inference" ? "inference" : eyebrow === "Architecture" ? "arch" : undefined;
   return (
     <section id={anchor} style={{ borderTop: "1px solid var(--line)" }}>
       <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>

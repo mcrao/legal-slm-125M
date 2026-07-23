@@ -23,6 +23,18 @@ export const GEMMA_URL =
 export const HF_GEMMA_SFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-sft";
 export const HF_GEMMA_RAFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-raft";
 
+// Inference-optimization demos.
+export const KV_URL =
+  process.env.NEXT_PUBLIC_KV_URL ?? "https://mcrao--slm-125m-kvcache-kv-web.modal.run";
+export const SPEC_URL =
+  process.env.NEXT_PUBLIC_SPEC_URL ?? "https://mcrao--qwen-speculative-spec-web.modal.run";
+
+export const SPEC_PRESETS = [
+  { label: "Structured (high accept)", prompt: "List the integers from 1 to 40, separated by commas." },
+  { label: "Legal boilerplate", prompt: "Write the standard opening recital of a commercial lease agreement between a landlord and a tenant." },
+  { label: "Creative (low accept)", prompt: "Write a short, original poem about the ocean at midnight." },
+] as const;
+
 // The two engines the Chat / RAFT panels can talk to.
 export type Engine = "slm" | "gemma";
 export const ENGINES: { id: Engine; label: string; sub: string }[] = [
