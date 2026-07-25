@@ -59,9 +59,10 @@ same data. Both are on the live demo (toggle in the Chat and RAFT panels).
 10. [RAFT: grounding the model in retrieved context](#raft-grounding-the-model-in-retrieved-context)
 11. [Comparison: 125M from scratch vs. Gemma 2 2B (QLoRA)](#comparison-125m-from-scratch-vs-gemma-2-2b-qlora)
 12. [Inference optimizations (live demos)](#inference-optimizations-live-demos)
-13. [Cost, honestly](#cost-honestly)
-14. [Gotchas we already paid for](#gotchas-we-already-paid-for)
-15. [Credits & license](#credits--license)
+13. [Leaderboard: every model, one scoreboard](#leaderboard-every-model-one-scoreboard)
+14. [Cost, honestly](#cost-honestly)
+15. [Gotchas we already paid for](#gotchas-we-already-paid-for)
+16. [Credits & license](#credits--license)
 
 ---
 
@@ -109,6 +110,7 @@ so any phase can be re-run or resumed independently.
 | `gemma_inference.py` | Modal scale-to-zero **GPU** endpoint serving the Gemma SFT + RAFT models |
 | `inference_kv.py` | KV-cache benchmark endpoint (125M, L4): same generation with/without `use_cache`, batch-size slider |
 | `inference_spec.py` | Speculative-decoding endpoint (Qwen2.5 7B target + 0.5B draft): throughput, acceptance rate, per-token provenance |
+| `leaderboard_eval.py` | Unified, tokenizer-fair eval of every model (bits/byte, closed-book & grounded accuracy, faithful-refusal) → `leaderboard.json` |
 | `modelcards/` | Hugging Face model cards for the Gemma and ONNX models |
 
 ## Prerequisites
@@ -696,6 +698,38 @@ slowdown)**, because verification overhead outweighs the savings. Speculative de
 free lunch — it is a bet that a small model can guess what a big one will say. (Note: HF's
 built-in assisted generation was actually *slower* than greedy for this pair on both L4 and
 A100 — the draft/target per-forward overhead is too close at 0.5B/7B unless acceptance is high.)
+
+## Leaderboard: every model, one scoreboard
+
+`leaderboard_eval.py` scores **every** model we touched on the **same** held-out sets. Because
+the SLM family uses a 16k tokenizer and Gemma a 256k one, raw perplexity is not comparable —
+so language modeling is measured in **bits per byte** (NLL per UTF-8 byte). The other metrics
+are behavioural and comparable by construction. It renders as the **Leaderboard** section of
+the site and is meant to grow as we add models.
+
+| Model | Params | Bits/byte ↓ | Grounded acc ↑ | Faithful refusal ↑ |
+|---|---|---|---|---|
+| Mentor base | 125.8M | 0.856 | 1.4% | 0% |
+| Our base | 125.8M | **0.849** | 1.4% | 0% |
+| Our SFT | 125.8M | 0.870 | 7.1% | 0% |
+| Our RAFT | 125.8M | 0.938 | 24.3% | 0% |
+| Gemma 2B (off-the-shelf) | 2.61B | 0.874 | 35.7% | 90% |
+| Gemma SFT (QLoRA) | 2.61B | 1.000 | 32.9% | 0% |
+| Gemma RAFT (QLoRA) | 2.61B | 0.981 | **37.1%** | **100%** |
+
+- **Grounded accuracy climbs every stage** (our arc 1.4% → 7.1% → 24.3%); Gemma RAFT is best at 37%.
+- **Our from-scratch base has the lowest bits/byte on legal text** — it specialised on exactly
+  this domain, so it out-models a general 2B at raw legal LM (fine-tuning for QA then *raises*
+  bits/byte, trading language modeling for task behaviour).
+- **The faithful-refusal column is the story.** Gemma off-the-shelf already declines 90% of
+  unanswerable questions; **SFT destroys that** (0% — it learns to always answer); **RAFT with
+  abstention examples restores it** (100% for Gemma). Our 125M never learns to refuse — too
+  small to hold the "is the answer present?" distinction, exactly as the RAFT section explains.
+- **Closed-book accuracy is ~0 for everyone** under strict exact-match on domain-specific answers,
+  so it is computed but not shown — a metric honest enough to admit when it isn't discriminating.
+
+Re-run and update with `modal run leaderboard_eval.py::run`, then paste the JSON's `models`
+array into `web/app/lib/model.ts` (`LEADERBOARD`).
 
 ## Cost, honestly
 

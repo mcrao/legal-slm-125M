@@ -29,6 +29,36 @@ export const KV_URL =
 export const SPEC_URL =
   process.env.NEXT_PUBLIC_SPEC_URL ?? "https://mcrao--qwen-speculative-spec-web.modal.run";
 
+// Unified model leaderboard. Regenerate with `modal run leaderboard_eval.py::run` and
+// paste the JSON's "models" array here. All metrics are on the same held-out sets;
+// bits/byte is tokenizer-fair (NLL per UTF-8 byte), so it is comparable across the 16k
+// SLM tokenizer and Gemma's 256k tokenizer.
+export type LeaderRow = {
+  name: string; family: "slm" | "gemma"; kind: "base" | "sft" | "raft";
+  params: string; arch: string; note: string; id: string;
+  bits_per_byte: number; token_ppl: number;
+  closed_book_acc: number; grounded_acc: number; faithful_refusal: number;
+};
+
+export const LEADERBOARD: { models: LeaderRow[]; sets: Record<string, number> } = {
+  models: [
+    { name: "Mentor base", family: "slm", kind: "base", params: "125.8M", arch: "Llama 125M", note: "peer, 10-epoch pretrain", id: "thesreedath/slm-125m-base", bits_per_byte: 0.856, token_ppl: 15.19, closed_book_acc: 0.0, grounded_acc: 0.014, faithful_refusal: 0.0 },
+    { name: "Our base", family: "slm", kind: "base", params: "125.8M", arch: "Llama 125M", note: "our 2-epoch pretrain", id: "jonam-ai/slm-125m-base", bits_per_byte: 0.849, token_ppl: 14.85, closed_book_acc: 0.0, grounded_acc: 0.014, faithful_refusal: 0.0 },
+    { name: "Our SFT", family: "slm", kind: "sft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-sft", bits_per_byte: 0.870, token_ppl: 15.85, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
+    { name: "Our RAFT", family: "slm", kind: "raft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-raft", bits_per_byte: 0.938, token_ppl: 19.70, closed_book_acc: 0.0, grounded_acc: 0.243, faithful_refusal: 0.0 },
+    { name: "Gemma 2B (off-the-shelf)", family: "gemma", kind: "base", params: "2.61B", arch: "Gemma 2", note: "no legal training", id: "google/gemma-2-2b-it", bits_per_byte: 0.874, token_ppl: 14.31, closed_book_acc: 0.0, grounded_acc: 0.357, faithful_refusal: 0.90 },
+    { name: "Gemma SFT", family: "gemma", kind: "sft", params: "2.61B", arch: "Gemma 2", note: "QLoRA", id: "jonam-ai/gemma-2-2b-legal-sft", bits_per_byte: 1.000, token_ppl: 21.03, closed_book_acc: 0.04, grounded_acc: 0.329, faithful_refusal: 0.0 },
+    { name: "Gemma RAFT", family: "gemma", kind: "raft", params: "2.61B", arch: "Gemma 2", note: "QLoRA", id: "jonam-ai/gemma-2-2b-legal-raft", bits_per_byte: 0.981, token_ppl: 19.84, closed_book_acc: 0.0, grounded_acc: 0.371, faithful_refusal: 1.0 },
+  ],
+  sets: { closed: 50, grounded: 70, refuse: 40, bpb: 50 },
+};
+
+export const LEADER_METRICS = [
+  { key: "bits_per_byte", label: "Bits / byte", better: "low", hint: "Language modeling on held-out legal text. Lower is better. Normalized per UTF-8 byte, so it is comparable across the 16k and 256k tokenizers." },
+  { key: "grounded_acc", label: "Grounded acc", better: "high", hint: "Answer-match accuracy WITH the relevant context provided (RAFT-style). Tests reading, not memory." },
+  { key: "faithful_refusal", label: "Faithful refusal", better: "high", hint: "On questions whose answer is NOT in the given context, the fraction where the model declines instead of fabricating. High is honest." },
+] as const;
+
 export const SPEC_PRESETS = [
   { label: "Structured (high accept)", prompt: "List the integers from 1 to 40, separated by commas." },
   { label: "Legal boilerplate", prompt: "Write the standard opening recital of a commercial lease agreement between a landlord and a tenant." },

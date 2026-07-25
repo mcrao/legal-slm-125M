@@ -1,5 +1,6 @@
 import Chat from "@/app/components/Chat";
 import KvCache from "@/app/components/KvCache";
+import Leaderboard from "@/app/components/Leaderboard";
 import ModelCompare from "@/app/components/ModelCompare";
 import Nav from "@/app/components/Nav";
 import Playground from "@/app/components/Playground";
@@ -87,7 +88,29 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="05" eyebrow="Inference" title="Making generation fast">
+      <Section n="05" eyebrow="Leaderboard" title="Every model, one scoreboard">
+        <p style={lead}>
+          The whole family on the same held-out sets, with metrics that survive different
+          tokenizers. Language modeling is scored in <strong style={{ fontWeight: 500, color: "var(--green)" }}>bits per byte</strong>
+          {" "}(not perplexity, which isn&apos;t comparable across a 16k and a 256k vocab). Includes
+          Gemma 2 2B straight off the shelf — untouched by us — so you can see what a real
+          pretrained model scores on legal data with zero fine-tuning.
+        </p>
+        <div style={{ marginTop: "1.9rem" }}>
+          <Leaderboard />
+        </div>
+        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "72ch" }}>
+          Two things jump out. <strong style={{ fontWeight: 500, color: "var(--ink)" }}>Grounded accuracy
+          climbs at every stage</strong> — our tiny model goes 1.4% → 7.1% → 24.3% across base → SFT → RAFT,
+          and Gemma lands highest at 37%. But watch the <strong style={{ fontWeight: 500, color: "var(--ink)" }}>faithful-refusal
+          column</strong>: Gemma off-the-shelf already declines 90% of unanswerable questions, our SFT step
+          <em> destroys</em> that instinct (it learns to always answer, 0%), and only RAFT with abstention
+          examples brings it back — to 100% for Gemma. Our 125M never learns to refuse at all: too small to
+          hold the distinction. Fine-tuning gives and fine-tuning takes away.
+        </p>
+      </Section>
+
+      <Section n="06" eyebrow="Inference" title="Making generation fast">
         <p style={lead}>
           Two optimizations every real serving stack uses, running live on GPUs. The first is
           exact and free; the second is exact but only pays off when a small model can guess
@@ -108,7 +131,7 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="06" eyebrow="The numbers" title="Small model, honest accounting">
+      <Section n="07" eyebrow="The numbers" title="Small model, honest accounting">
         <div style={grid3}>
           {NUMBERS.map((x) => (
             <div key={x.k} style={numCell}>
@@ -120,7 +143,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="07" eyebrow="Training" title="Perplexity, falling">
+      <Section n="08" eyebrow="Training" title="Perplexity, falling">
         <p style={lead}>
           Held-out perplexity measured on a 20.6-million-token validation set the model
           never trained on. Two epochs, 7,778 optimizer steps, from a random start to{" "}
@@ -131,7 +154,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="08" eyebrow="Architecture" title="A Llama, in miniature">
+      <Section n="09" eyebrow="Architecture" title="A Llama, in miniature">
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "2.5rem", alignItems: "start" }}>
           <dl style={{ margin: 0, display: "grid", gap: 0 }}>
             {ARCH.map((a, i) => (
@@ -145,7 +168,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="09" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
+      <Section n="10" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
         <p style={lead}>
           Streamed from public datasets, then run through a deterministic pipeline:
           rule-based cleaning, an OCR-garble gate, MinHash-LSH near-duplicate removal,
@@ -156,7 +179,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="10" eyebrow="Caveats" title="What this is, and is not">
+      <Section n="11" eyebrow="Caveats" title="What this is, and is not">
         <div style={{ display: "grid", gap: "1.1rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
@@ -213,7 +236,7 @@ function Hero() {
 }
 
 function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: string; children: React.ReactNode }) {
-  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Inference" ? "inference" : eyebrow === "Architecture" ? "arch" : undefined;
+  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Leaderboard" ? "leaderboard" : eyebrow === "Inference" ? "inference" : eyebrow === "Architecture" ? "arch" : undefined;
   return (
     <section id={anchor} style={{ borderTop: "1px solid var(--line)" }}>
       <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>
