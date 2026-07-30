@@ -8,6 +8,7 @@ const LINKS = [
   { id: "play", label: "Playground", small: false },
   { id: "chat", label: "Chat", small: false },
   { id: "raft", label: "RAFT", small: false },
+  { id: "align", label: "Alignment", small: true },
   { id: "compare", label: "Compare", small: true },
   { id: "leaderboard", label: "Leaderboard", small: false },
   { id: "cost", label: "Cost", small: true },

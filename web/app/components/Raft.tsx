@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { GEMMA_URL, RAFT_EXAMPLES, RAFT_URL, type Engine } from "@/app/lib/model";
+import { RAFT_EXAMPLES, RAFT_MODELS, UNIVERSAL_URL } from "@/app/lib/model";
 
 type Status = "idle" | "waking" | "streaming" | "done" | "error";
 
@@ -9,7 +9,7 @@ export default function Raft() {
   const [context, setContext] = useState<string>(RAFT_EXAMPLES[0].context);
   const [question, setQuestion] = useState<string>(RAFT_EXAMPLES[0].question);
   const [answer, setAnswer] = useState<string>("");
-  const [engine, setEngine] = useState<Engine>("slm");
+  const [modelId, setModelId] = useState<string>(RAFT_MODELS[0].id);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -32,11 +32,10 @@ export default function Raft() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const base = engine === "gemma" ? GEMMA_URL : RAFT_URL;
-      const res = await fetch(`${base}/raft`, {
+      const res = await fetch(`${UNIVERSAL_URL}/raft`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, question, max_new_tokens: 180, temperature: 0.5 }),
+        body: JSON.stringify({ model_id: modelId, context, question, max_new_tokens: 180, temperature: 0.5 }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) throw new Error(`server ${res.status}`);
@@ -77,12 +76,11 @@ export default function Raft() {
         <span className="eyebrow">Answer from context</span>
         <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap" }}>
           <div className="seg">
-            <button data-active={engine === "slm"} onClick={() => !busy && setEngine("slm")} disabled={busy}>Our SLM · 125M</button>
-            <button data-active={engine === "gemma"} onClick={() => !busy && setEngine("gemma")} disabled={busy}>Gemma 2 · 2B</button>
+            {RAFT_MODELS.map((m) => (
+              <button key={m.id} data-active={modelId === m.id} onClick={() => !busy && setModelId(m.id)} disabled={busy}>{m.label}</button>
+            ))}
           </div>
-          <span className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)" }}>
-            {engine === "slm" ? "full FT · hosted CPU" : "QLoRA · hosted GPU"}
-          </span>
+          <span className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)" }}>hosted GPU</span>
         </div>
       </div>
 
@@ -144,11 +142,10 @@ export default function Raft() {
       </div>
 
       <p style={{ marginTop: "1rem", fontSize: "0.8rem", color: "var(--faint)", lineHeight: 1.6 }}>
-        RAFT (Retrieval-Augmented Fine-Tuning): the model answers from the context you provide and ignores distractors.{" "}
-        {engine === "slm"
-          ? "Our 125M model answers from context, but is too small to reliably know when the answer isn't there — ask about something absent and it will confidently make one up. That limit is the point."
-          : "Gemma 2B was QLoRA-tuned on the same data (0.79% of weights) to decline when the answer isn't in the context, instead of guessing. Wakes on your first request."}
-        {" "}Not legal or financial advice.
+        RAFT (Retrieval-Augmented Fine-Tuning): the model answers from the context you provide and ignores distractors.
+        Faithfulness scales: the 125M can&apos;t reliably tell when the answer is absent (it will make one up),
+        the 500M starts to, and Gemma declines cleanly — ask about something not in the context and compare.
+        Not legal or financial advice.
       </p>
     </div>
   );

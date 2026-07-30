@@ -1,3 +1,4 @@
+import Alignment from "@/app/components/Alignment";
 import Chat from "@/app/components/Chat";
 import Expenses from "@/app/components/Expenses";
 import KvCache from "@/app/components/KvCache";
@@ -15,6 +16,30 @@ export default function Home() {
     <main style={{ position: "relative", zIndex: 2 }}>
       <Nav />
       <Hero />
+
+      <section id="map" style={{ borderTop: "1px solid var(--line)" }}>
+        <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(2rem, 5vw, 4rem)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "1.1rem", marginBottom: "1.5rem" }}>
+            <span className="section-num">00</span>
+            <div className="rule-brass" style={{ transform: "translateY(-4px)" }} />
+            <span className="eyebrow">The map</span>
+          </div>
+          <h2 className="display" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3rem)", marginBottom: "0.5rem", maxWidth: "24ch" }}>
+            Everything we built, at a glance
+          </h2>
+          <p style={lead}>
+            Three origins — a 125M we pretrained from noise, the mentor&apos;s 500M we adopted, and Google&apos;s
+            Gemma&nbsp;2&nbsp;2B off the shelf — each run through the same five-phase pipeline: pretrain, SFT,
+            RAFT, DPO, and RLAIF. Twenty-two models in all. Everything below is live.
+          </p>
+          <figure style={{ margin: "1.9rem 0 0", borderRadius: 8, overflow: "hidden", border: "1px solid var(--line-2)", background: "#f4f1ea" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/flow.png" alt="Model family tree: three origins (125M from scratch, mentor 500M adopted, Gemma 2B off-the-shelf), each taken through pretrain, SFT, RAFT, DPO and RLAIF"
+                 style={{ width: "100%", height: "auto", display: "block" }} />
+          </figure>
+        </div>
+      </section>
+
       <Section n="01" eyebrow="Playground" title="Complete the passage">
         <p style={lead}>
           Give it the opening of a brief, a filing, or an opinion, then watch the model
@@ -69,13 +94,24 @@ export default function Home() {
         <Raft />
       </Section>
 
-      <Section n="04" eyebrow="Compare" title="Same data, two very different models">
+      <Section n="04" eyebrow="Alignment" title="Preference-tuned: DPO and RLAIF">
+        <p style={lead}>
+          After SFT and RAFT, one more layer: align the model to preference. Pick a method — direct
+          preference optimization (DPO), or a reward model plus GRPO (RLAIF) — a base stage to build on,
+          and a size. Twelve real models, live on the GPU.
+        </p>
+        <div style={{ marginTop: "1.9rem" }}>
+          <Alignment />
+        </div>
+      </Section>
+
+      <Section n="05" eyebrow="Compare" title="Same data, two very different models">
         <p style={lead}>
           We ran the <em>identical</em> SFT and RAFT datasets through a real pretrained
           model — <a href="https://huggingface.co/google/gemma-2-2b-it" target="_blank" rel="noopener" className="link-underline" style={{ color: "var(--brass)" }}>Gemma&nbsp;2&nbsp;2B ↗</a> —
-          using QLoRA (4-bit base, only 0.79% of weights trained). Flip the toggle in the
-          Chat and RAFT panels above to talk to either one. Here is exactly what each
-          phase costs and trains.
+          using QLoRA (4-bit base, only 0.79% of weights trained). Pick it in the model
+          selectors of the Chat, RAFT, and Alignment panels above, next to our 125M and 500M.
+          Here is exactly what each phase costs and trains.
         </p>
         <div style={{ marginTop: "1.9rem" }}>
           <ModelCompare />
@@ -89,7 +125,7 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="05" eyebrow="Leaderboard" title="Every model, one scoreboard">
+      <Section n="06" eyebrow="Leaderboard" title="Every model, one scoreboard">
         <p style={lead}>
           The whole family on the same held-out sets, with metrics that survive different
           tokenizers. Language modeling is scored in <strong style={{ fontWeight: 500, color: "var(--green)" }}>bits per byte</strong>
@@ -100,7 +136,7 @@ export default function Home() {
         <div style={{ marginTop: "1.9rem" }}>
           <Leaderboard />
         </div>
-        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "72ch" }}>
+        <p style={{ ...lead, marginTop: "1.6rem" }}>
           Two things jump out. <strong style={{ fontWeight: 500, color: "var(--ink)" }}>Grounded accuracy
           climbs at every stage</strong> — our tiny model goes 1.4% → 7.1% → 24.3% across base → SFT → RAFT,
           and Gemma lands highest at 37%. But watch the <strong style={{ fontWeight: 500, color: "var(--ink)" }}>faithful-refusal
@@ -110,7 +146,7 @@ export default function Home() {
           the 125M RAFT never learns to refuse (0%), the 500M RAFT starts to (20%), Gemma nails it (100%).
           Faithfulness isn&apos;t a prompt trick — past a point it&apos;s a capability that costs parameters.
         </p>
-        <p style={{ ...lead, marginTop: "1.1rem", maxWidth: "72ch" }}>
+        <p style={{ ...lead, marginTop: "1.1rem" }}>
           The <strong style={{ fontWeight: 500, color: "var(--ink)" }}>+ DPO</strong> and{" "}
           <strong style={{ fontWeight: 500, color: "var(--ink)" }}>+ RLAIF</strong> rows are a full
           preference-optimization sweep on top of every SFT and RAFT model (DPO on ~4.7k AI-labeled
@@ -125,7 +161,7 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="06" eyebrow="Cost" title="What the whole thing cost">
+      <Section n="07" eyebrow="Cost" title="What the whole thing cost">
         <p style={lead}>
           Every model on the board, every dataset, every GPU-hour — tracked. Building a base
           model from scratch is the expensive part; adapting one is cheap. Here is the honest
@@ -136,7 +172,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="07" eyebrow="Inference" title="Making generation fast">
+      <Section n="08" eyebrow="Inference" title="Making generation fast">
         <p style={lead}>
           Two optimizations every real serving stack uses, running live on GPUs. The first is
           exact and free; the second is exact but only pays off when a small model can guess
@@ -148,7 +184,7 @@ export default function Home() {
           <Speculative />
         </div>
 
-        <p style={{ ...lead, marginTop: "1.6rem", maxWidth: "70ch" }}>
+        <p style={{ ...lead, marginTop: "1.6rem" }}>
           The lesson in both: throughput is not one number. The KV cache turns a quadratic
           cost linear, and its payoff grows with how many users you batch together. Speculative
           decoding trades extra draft compute for fewer expensive target steps, and only wins
@@ -157,7 +193,7 @@ export default function Home() {
         </p>
       </Section>
 
-      <Section n="08" eyebrow="The numbers" title="Small model, honest accounting">
+      <Section n="09" eyebrow="The numbers" title="Small model, honest accounting">
         <div style={grid3}>
           {NUMBERS.map((x) => (
             <div key={x.k} style={numCell}>
@@ -169,7 +205,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="09" eyebrow="Training" title="Perplexity, falling">
+      <Section n="10" eyebrow="Training" title="Perplexity, falling">
         <p style={lead}>
           Held-out perplexity measured on a 20.6-million-token validation set the model
           never trained on. Two epochs, 7,778 optimizer steps, from a random start to{" "}
@@ -180,7 +216,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="10" eyebrow="Architecture" title="A Llama, in miniature">
+      <Section n="11" eyebrow="Architecture" title="A Llama, in miniature">
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "2.5rem", alignItems: "start" }}>
           <dl style={{ margin: 0, display: "grid", gap: 0 }}>
             {ARCH.map((a, i) => (
@@ -194,7 +230,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="11" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
+      <Section n="12" eyebrow="The corpus" title="Two billion tokens, hand-cleaned">
         <p style={lead}>
           Streamed from public datasets, then run through a deterministic pipeline:
           rule-based cleaning, an OCR-garble gate, MinHash-LSH near-duplicate removal,
@@ -205,7 +241,7 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section n="12" eyebrow="Caveats" title="What this is, and is not">
+      <Section n="13" eyebrow="Caveats" title="What this is, and is not">
         <div style={{ display: "grid", gap: "1.1rem" }}>
           <Caveat>
             It is a <b>base (pretrained) model</b>, a next-token predictor. It has never
@@ -262,7 +298,7 @@ function Hero() {
 }
 
 function Section({ n, eyebrow, title, children }: { n: string; eyebrow: string; title: string; children: React.ReactNode }) {
-  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Compare" ? "compare" : eyebrow === "Leaderboard" ? "leaderboard" : eyebrow === "Cost" ? "cost" : eyebrow === "Inference" ? "inference" : eyebrow === "Architecture" ? "arch" : undefined;
+  const anchor = eyebrow === "Playground" ? "play" : eyebrow === "Chat" ? "chat" : eyebrow === "RAFT" ? "raft" : eyebrow === "Alignment" ? "align" : eyebrow === "Compare" ? "compare" : eyebrow === "Leaderboard" ? "leaderboard" : eyebrow === "Cost" ? "cost" : eyebrow === "Inference" ? "inference" : eyebrow === "Architecture" ? "arch" : undefined;
   return (
     <section id={anchor} style={{ borderTop: "1px solid var(--line)" }}>
       <div className="wrap" style={{ paddingTop: "clamp(3rem, 7vw, 5.5rem)", paddingBottom: "clamp(3rem, 7vw, 5.5rem)" }}>

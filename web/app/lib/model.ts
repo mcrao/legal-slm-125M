@@ -23,6 +23,40 @@ export const GEMMA_URL =
 export const HF_GEMMA_SFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-sft";
 export const HF_GEMMA_RAFT_URL = "https://huggingface.co/jonam-ai/gemma-2-2b-legal-raft";
 
+// One endpoint that serves any of our models by id (bases, SFT/RAFT, DPO/RLAIF).
+export const UNIVERSAL_URL =
+  process.env.NEXT_PUBLIC_UNIVERSAL_URL ??
+  "https://mcrao--legal-slm-universal-inference-universal-web.modal.run";
+
+// Model pickers for the interactive panels.
+export const PLAYGROUND_MODELS = [
+  { id: "jonam-ai/slm-125m-base", label: "Our 125M", sub: "2-epoch" },
+  { id: "thesreedath/slm-125m-base", label: "Mentor 125M", sub: "10-epoch" },
+  { id: "thesreedath/slm-500m-base", label: "Mentor 500M", sub: "517M" },
+] as const;
+
+export const CHAT_MODELS = [
+  { id: "jonam-ai/legal-slm-125m-sft", label: "Our 125M", browser: true },
+  { id: "jonam-ai/legal-slm-500m-sft", label: "500M", browser: false },
+  { id: "jonam-ai/gemma-2-2b-legal-sft", label: "Gemma 2B", browser: false },
+] as const;
+
+export const RAFT_MODELS = [
+  { id: "jonam-ai/legal-slm-125m-raft", label: "Our 125M" },
+  { id: "jonam-ai/legal-slm-500m-raft", label: "500M" },
+  { id: "jonam-ai/gemma-2-2b-legal-raft", label: "Gemma 2B" },
+] as const;
+
+// Alignment picker: size × base-stage × method -> a model id.
+export const ALIGN_SIZES = [
+  { key: "125m", label: "Our 125M", prefix: "jonam-ai/legal-slm-125m" },
+  { key: "500m", label: "500M", prefix: "jonam-ai/legal-slm-500m" },
+  { key: "gemma", label: "Gemma 2B", prefix: "jonam-ai/gemma-2-2b-legal" },
+] as const;
+export function alignModelId(sizePrefix: string, stage: "sft" | "raft", method: "dpo" | "rlaif") {
+  return `${sizePrefix}-${stage}-${method}`;
+}
+
 // Inference-optimization demos.
 export const KV_URL =
   process.env.NEXT_PUBLIC_KV_URL ?? "https://mcrao--slm-125m-kvcache-kv-web.modal.run";

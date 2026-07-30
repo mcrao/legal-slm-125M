@@ -42,12 +42,12 @@ export default function Leaderboard() {
     );
   }
 
+  // Bar length is proportional to the raw value (relative to the column's max), so the bar
+  // always matches the number. Colour, not length, marks the best (green).
   function barWidth(key: Key, v: number) {
-    const { min, max } = stats[key];
-    if (max === min) return 60;
-    const t = (v - min) / (max - min);                 // 0..1
-    const norm = metaByKey[key].better === "low" ? 1 - t : t;
-    return 12 + norm * 88;                              // keep a floor so small values show
+    const { max } = stats[key];
+    if (max <= 0) return 3;
+    return 3 + (v / max) * 97;
   }
 
   return (

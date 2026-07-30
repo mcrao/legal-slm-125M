@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { INFERENCE_URL, PRESETS } from "@/app/lib/model";
+import { PLAYGROUND_MODELS, PRESETS, UNIVERSAL_URL } from "@/app/lib/model";
 
 type Status = "idle" | "waking" | "streaming" | "done" | "error";
 
 export default function Playground() {
   const [prompt, setPrompt] = useState<string>(PRESETS[0]);
+  const [modelId, setModelId] = useState<string>(PLAYGROUND_MODELS[0].id);
   const [tokens, setTokens] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [maxTokens, setMaxTokens] = useState(96);
@@ -25,10 +26,11 @@ export default function Playground() {
     abortRef.current = ctrl;
 
     try {
-      const res = await fetch(`${INFERENCE_URL}/generate`, {
+      const res = await fetch(`${UNIVERSAL_URL}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model_id: modelId,
           prompt,
           max_new_tokens: maxTokens,
           temperature: temp,
@@ -84,6 +86,18 @@ export default function Playground() {
 
   return (
     <div className="paper-card" style={{ padding: "clamp(1.25rem, 3vw, 2rem)" }}>
+      {/* base model selector */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: "1.2rem" }}>
+        <span className="eyebrow">Base model</span>
+        <div className="seg">
+          {PLAYGROUND_MODELS.map((m) => (
+            <button key={m.id} data-active={modelId === m.id} onClick={() => setModelId(m.id)} disabled={busy}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* presets */}
       <div style={{ marginBottom: "1.1rem" }}>
         <div className="eyebrow" style={{ marginBottom: "0.7rem" }}>Starters</div>
