@@ -34,7 +34,8 @@ export const SPEC_URL =
 // bits/byte is tokenizer-fair (NLL per UTF-8 byte), so it is comparable across the 16k
 // SLM tokenizer and Gemma's 256k tokenizer.
 export type LeaderRow = {
-  name: string; family: "slm" | "gemma"; kind: "base" | "sft" | "raft";
+  name: string; family: "slm" | "gemma"; kind: "base" | "sft" | "raft" | "dpo" | "rlaif";
+  fmt?: "base" | "sft" | "raft";
   params: string; arch: string; note: string; id: string;
   bits_per_byte: number; token_ppl: number;
   closed_book_acc: number; grounded_acc: number; faithful_refusal: number;
@@ -44,14 +45,26 @@ export const LEADERBOARD: { models: LeaderRow[]; sets: Record<string, number> } 
   models: [
     { name: "Mentor base", family: "slm", kind: "base", params: "125.8M", arch: "Llama 125M", note: "peer, 10-epoch pretrain", id: "thesreedath/slm-125m-base", bits_per_byte: 0.856, token_ppl: 15.19, closed_book_acc: 0.0, grounded_acc: 0.014, faithful_refusal: 0.0 },
     { name: "Our base", family: "slm", kind: "base", params: "125.8M", arch: "Llama 125M", note: "our 2-epoch pretrain", id: "jonam-ai/slm-125m-base", bits_per_byte: 0.849, token_ppl: 14.85, closed_book_acc: 0.0, grounded_acc: 0.014, faithful_refusal: 0.0 },
-    { name: "Our SFT", family: "slm", kind: "sft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-sft", bits_per_byte: 0.870, token_ppl: 15.85, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
-    { name: "Our RAFT", family: "slm", kind: "raft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-raft", bits_per_byte: 0.938, token_ppl: 19.70, closed_book_acc: 0.0, grounded_acc: 0.243, faithful_refusal: 0.0 },
+    { name: "Our SFT", family: "slm", kind: "sft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-sft", bits_per_byte: 0.87, token_ppl: 15.85, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
+    { name: "Our RAFT", family: "slm", kind: "raft", params: "125.8M", arch: "Llama 125M", note: "full fine-tune", id: "jonam-ai/legal-slm-125m-raft", bits_per_byte: 0.938, token_ppl: 19.7, closed_book_acc: 0.0, grounded_acc: 0.243, faithful_refusal: 0.0 },
     { name: "500M base (mentor)", family: "slm", kind: "base", params: "517M", arch: "Llama 500M", note: "peer 500M pretrain", id: "thesreedath/slm-500m-base", bits_per_byte: 0.784, token_ppl: 13.57, closed_book_acc: 0.0, grounded_acc: 0.143, faithful_refusal: 0.0 },
     { name: "500M SFT", family: "slm", kind: "sft", params: "517M", arch: "Llama 500M", note: "full fine-tune", id: "jonam-ai/legal-slm-500m-sft", bits_per_byte: 0.822, token_ppl: 15.38, closed_book_acc: 0.0, grounded_acc: 0.057, faithful_refusal: 0.0 },
-    { name: "500M RAFT", family: "slm", kind: "raft", params: "517M", arch: "Llama 500M", note: "full fine-tune", id: "jonam-ai/legal-slm-500m-raft", bits_per_byte: 0.954, token_ppl: 23.90, closed_book_acc: 0.0, grounded_acc: 0.286, faithful_refusal: 0.20 },
-    { name: "Gemma 2B (off-the-shelf)", family: "gemma", kind: "base", params: "2.61B", arch: "Gemma 2", note: "no legal training", id: "google/gemma-2-2b-it", bits_per_byte: 0.874, token_ppl: 14.31, closed_book_acc: 0.0, grounded_acc: 0.357, faithful_refusal: 0.90 },
-    { name: "Gemma SFT", family: "gemma", kind: "sft", params: "2.61B", arch: "Gemma 2", note: "QLoRA", id: "jonam-ai/gemma-2-2b-legal-sft", bits_per_byte: 1.000, token_ppl: 21.03, closed_book_acc: 0.04, grounded_acc: 0.329, faithful_refusal: 0.0 },
+    { name: "500M RAFT", family: "slm", kind: "raft", params: "517M", arch: "Llama 500M", note: "full fine-tune", id: "jonam-ai/legal-slm-500m-raft", bits_per_byte: 0.954, token_ppl: 23.9, closed_book_acc: 0.0, grounded_acc: 0.286, faithful_refusal: 0.2 },
+    { name: "Gemma 2B (off-the-shelf)", family: "gemma", kind: "base", params: "2.61B", arch: "Gemma 2", note: "no legal training", id: "google/gemma-2-2b-it", bits_per_byte: 0.874, token_ppl: 14.31, closed_book_acc: 0.0, grounded_acc: 0.357, faithful_refusal: 0.9 },
+    { name: "Gemma SFT", family: "gemma", kind: "sft", params: "2.61B", arch: "Gemma 2", note: "QLoRA", id: "jonam-ai/gemma-2-2b-legal-sft", bits_per_byte: 1.0, token_ppl: 21.03, closed_book_acc: 0.04, grounded_acc: 0.329, faithful_refusal: 0.0 },
     { name: "Gemma RAFT", family: "gemma", kind: "raft", params: "2.61B", arch: "Gemma 2", note: "QLoRA", id: "jonam-ai/gemma-2-2b-legal-raft", bits_per_byte: 0.981, token_ppl: 19.84, closed_book_acc: 0.0, grounded_acc: 0.371, faithful_refusal: 1.0 },
+    { name: "Our SFT + DPO", family: "slm", kind: "dpo", params: "125.8M", arch: "Llama 125M", note: "DPO on SFT", id: "jonam-ai/legal-slm-125m-sft-dpo", bits_per_byte: 0.872, token_ppl: 15.95, closed_book_acc: 0.0, grounded_acc: 0.029, faithful_refusal: 0.0 },
+    { name: "500M SFT + DPO", family: "slm", kind: "dpo", params: "517M", arch: "Llama 500M", note: "DPO on SFT", id: "jonam-ai/legal-slm-500m-sft-dpo", bits_per_byte: 0.823, token_ppl: 15.46, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
+    { name: "Gemma SFT + DPO", family: "gemma", kind: "dpo", params: "2.61B", arch: "Gemma 2", note: "DPO on SFT (QLoRA)", id: "jonam-ai/gemma-2-2b-legal-sft-dpo", bits_per_byte: 1.054, token_ppl: 24.77, closed_book_acc: 0.0, grounded_acc: 0.3, faithful_refusal: 0.0 },
+    { name: "Our RAFT + DPO", family: "slm", kind: "dpo", params: "125.8M", arch: "Llama 125M", note: "DPO on RAFT", id: "jonam-ai/legal-slm-125m-raft-dpo", bits_per_byte: 0.951, token_ppl: 20.51, closed_book_acc: 0.0, grounded_acc: 0.2, faithful_refusal: 0.0 },
+    { name: "500M RAFT + DPO", family: "slm", kind: "dpo", params: "517M", arch: "Llama 500M", note: "DPO on RAFT", id: "jonam-ai/legal-slm-500m-raft-dpo", bits_per_byte: 0.995, token_ppl: 27.39, closed_book_acc: 0.0, grounded_acc: 0.243, faithful_refusal: 0.2 },
+    { name: "Gemma RAFT + DPO", family: "gemma", kind: "dpo", params: "2.61B", arch: "Gemma 2", note: "DPO on RAFT (QLoRA)", id: "jonam-ai/gemma-2-2b-legal-raft-dpo", bits_per_byte: 1.588, token_ppl: 125.93, closed_book_acc: 0.0, grounded_acc: 0.357, faithful_refusal: 1.0 },
+    { name: "Our SFT + RLAIF", family: "slm", kind: "rlaif", params: "125.8M", arch: "Llama 125M", note: "GRPO on SFT", id: "jonam-ai/legal-slm-125m-sft-rlaif", bits_per_byte: 0.869, token_ppl: 15.81, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
+    { name: "500M SFT + RLAIF", family: "slm", kind: "rlaif", params: "517M", arch: "Llama 500M", note: "GRPO on SFT", id: "jonam-ai/legal-slm-500m-sft-rlaif", bits_per_byte: 0.821, token_ppl: 15.31, closed_book_acc: 0.0, grounded_acc: 0.071, faithful_refusal: 0.0 },
+    { name: "Gemma SFT + RLAIF", family: "gemma", kind: "rlaif", params: "2.61B", arch: "Gemma 2", note: "GRPO on SFT (QLoRA)", id: "jonam-ai/gemma-2-2b-legal-sft-rlaif", bits_per_byte: 1.005, token_ppl: 21.31, closed_book_acc: 0.02, grounded_acc: 0.329, faithful_refusal: 0.0 },
+    { name: "Our RAFT + RLAIF", family: "slm", kind: "rlaif", params: "125.8M", arch: "Llama 125M", note: "GRPO on RAFT", id: "jonam-ai/legal-slm-125m-raft-rlaif", bits_per_byte: 0.94, token_ppl: 19.84, closed_book_acc: 0.0, grounded_acc: 0.214, faithful_refusal: 0.0 },
+    { name: "500M RAFT + RLAIF", family: "slm", kind: "rlaif", params: "517M", arch: "Llama 500M", note: "GRPO on RAFT", id: "jonam-ai/legal-slm-500m-raft-rlaif", bits_per_byte: 0.956, token_ppl: 24.0, closed_book_acc: 0.0, grounded_acc: 0.2, faithful_refusal: 0.2 },
+    { name: "Gemma RAFT + RLAIF", family: "gemma", kind: "rlaif", params: "2.61B", arch: "Gemma 2", note: "GRPO on RAFT (QLoRA)", id: "jonam-ai/gemma-2-2b-legal-raft-rlaif", bits_per_byte: 0.989, token_ppl: 20.3, closed_book_acc: 0.0, grounded_acc: 0.1, faithful_refusal: 1.0 },
   ],
   sets: { closed: 50, grounded: 70, refuse: 40, bpb: 50 },
 };
@@ -72,9 +85,9 @@ export const EXPENSES = {
     { name: "500M SFT / RAFT", detail: "full fine-tune · 1×A100", cost: 0.45 },
     { name: "Gemma 2B SFT (QLoRA)", detail: "1×A100 · ~1.8h", cost: 4.0 },
     { name: "Gemma 2B RAFT (QLoRA)", detail: "1×A100 · ~0.6h", cost: 1.5 },
-    { name: "DPO ×6", detail: "SLM full-FT + Gemma QLoRA · A100", cost: 4.0 },
+    { name: "DPO ×6", detail: "SLM full-FT + Gemma QLoRA · A100", cost: 3.5 },
     { name: "Reward models ×2", detail: "500M Bradley-Terry · A100", cost: 0.8 },
-    { name: "RLAIF / GRPO ×6", detail: "on-policy, reward-model scored · A100", cost: 14.0 },
+    { name: "RLAIF / GRPO ×6", detail: "on-policy · A100 · incl. 3 timeout retries (~$9 waste)", cost: 16.0 },
   ],
   shared: [
     { name: "Data pipeline", detail: "clean · dedup · decontaminate · CPU", cost: 2.0 },

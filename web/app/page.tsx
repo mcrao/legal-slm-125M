@@ -110,6 +110,19 @@ export default function Home() {
           the 125M RAFT never learns to refuse (0%), the 500M RAFT starts to (20%), Gemma nails it (100%).
           Faithfulness isn&apos;t a prompt trick — past a point it&apos;s a capability that costs parameters.
         </p>
+        <p style={{ ...lead, marginTop: "1.1rem", maxWidth: "72ch" }}>
+          The <strong style={{ fontWeight: 500, color: "var(--ink)" }}>+ DPO</strong> and{" "}
+          <strong style={{ fontWeight: 500, color: "var(--ink)" }}>+ RLAIF</strong> rows are a full
+          preference-optimization sweep on top of every SFT and RAFT model (DPO on ~4.7k AI-labeled
+          pairs; RLAIF = a Bradley-Terry reward model then GRPO). Read them honestly: these methods
+          tune <em>response quality and style</em> — helpfulness, structure, and, where the pairs teach
+          it, faithfulness — which strict exact-match accuracy barely registers. So the capability
+          columns hold roughly steady (they mostly don&apos;t regress), faithful refusal is preserved
+          (Gemma RAFT stays at 100% through both), and where a model over-optimizes you can see it: Gemma
+          RAFT + DPO&apos;s bits/byte balloons to 1.59 as it leans hard into the preferred abstain-heavy
+          style. Quantifying the quality gain itself would need an LLM-judge win-rate — the natural next
+          column.
+        </p>
       </Section>
 
       <Section n="06" eyebrow="Cost" title="What the whole thing cost">

@@ -59,10 +59,11 @@ same data. Both are on the live demo (toggle in the Chat and RAFT panels).
 10. [RAFT: grounding the model in retrieved context](#raft-grounding-the-model-in-retrieved-context)
 11. [Comparison: 125M from scratch vs. Gemma 2 2B (QLoRA)](#comparison-125m-from-scratch-vs-gemma-2-2b-qlora)
 12. [Inference optimizations (live demos)](#inference-optimizations-live-demos)
-13. [Leaderboard: every model, one scoreboard](#leaderboard-every-model-one-scoreboard)
-14. [Cost, honestly](#cost-honestly)
-15. [Gotchas we already paid for](#gotchas-we-already-paid-for)
-16. [Credits & license](#credits--license)
+13. [More base models, and alignment (DPO + RLAIF)](#more-base-models-and-alignment-dpo--rlaif)
+14. [Leaderboard: every model, one scoreboard](#leaderboard-every-model-one-scoreboard)
+15. [Cost, honestly](#cost-honestly)
+16. [Gotchas we already paid for](#gotchas-we-already-paid-for)
+17. [Credits & license](#credits--license)
 
 ---
 
@@ -110,7 +111,12 @@ so any phase can be re-run or resumed independently.
 | `gemma_inference.py` | Modal scale-to-zero **GPU** endpoint serving the Gemma SFT + RAFT models |
 | `inference_kv.py` | KV-cache benchmark endpoint (125M, L4): same generation with/without `use_cache`, batch-size slider |
 | `inference_spec.py` | Speculative-decoding endpoint (Qwen2.5 7B target + 0.5B draft): throughput, acceptance rate, per-token provenance |
-| `leaderboard_eval.py` | Unified, tokenizer-fair eval of every model (bits/byte, closed-book & grounded accuracy, faithful-refusal) → `leaderboard.json` |
+| `leaderboard_eval.py` | Unified, tokenizer-fair eval of every model (bits/byte, closed-book & grounded accuracy, faithful-refusal); incremental + fault-tolerant → `leaderboard.json` |
+| `train_slm.py` | Generalized full-FT SFT/RAFT for any SLM base (re-tokenizes raw text) — used for the mentor's 500M |
+| `preference_data.py` | AI-labeled preference pairs (chosen/rejected) via MiniMax-M3, for DPO + RLAIF |
+| `train_dpo.py` | DPO on any base (SLM full-FT / Gemma QLoRA) |
+| `train_reward.py` | Bradley-Terry reward models (one per setting) for RLAIF |
+| `train_grpo.py` | RLAIF via GRPO against the reward model |
 | `modelcards/` | Hugging Face model cards for the Gemma and ONNX models |
 
 ## Prerequisites
@@ -699,6 +705,36 @@ free lunch — it is a bet that a small model can guess what a big one will say.
 built-in assisted generation was actually *slower* than greedy for this pair on both L4 and
 A100 — the draft/target per-forward overhead is too close at 0.5B/7B unless acceptance is high.)
 
+## More base models, and alignment (DPO + RLAIF)
+
+Two extensions push the family wider and further down the post-training stack.
+
+**A 500M base.** We ran the *same* SFT and RAFT recipe on the mentor's larger
+[`thesreedath/slm-500m-base`](https://huggingface.co/thesreedath/slm-500m-base) (a 517M
+Llama, 32k vocab — a *different* tokenizer, so `train_slm.py` re-tokenizes the raw text).
+Result worth the trip: the 500M RAFT reaches **20% faithful refusal** where the 125M was flat
+0% — abstention is a capability that turns on with scale — and the 500M base posts the best
+bits/byte on legal text of any model here.
+
+**DPO and RLAIF, on every SFT and RAFT model.** A full preference-optimization sweep:
+
+- `preference_data.py` builds ~4.7k `(prompt, chosen, rejected)` pairs with **MiniMax-M3** as
+  the AI labeler (chosen = excellent answer, rejected = plausible-but-worse). The RAFT set
+  mixes in ~30% **unanswerable** prompts (chosen = decline, rejected = fabricate) to teach
+  faithfulness *by preference*.
+- `train_dpo.py` runs **DPO** on all six SFT/RAFT bases (SLM full-FT, Gemma QLoRA), conversational
+  format + a custom chat template so it stays in-distribution.
+- `train_reward.py` trains **Bradley-Terry reward models** (500M-based, one per setting); then
+  `train_grpo.py` does **RLAIF via GRPO** — on-policy, group-relative, scored by the reward model.
+
+That is **12 preference-tuned models** (6 DPO + 6 RLAIF) on top of the 6 SFT/RAFT models, all on
+the leaderboard. Read them honestly: DPO/RLAIF tune *response quality and style*, which strict
+exact-match accuracy barely registers — so the capability columns hold roughly steady, faithful
+refusal is preserved (Gemma RAFT stays 100% through both), and over-optimization is visible where
+it happens (Gemma RAFT + DPO's bits/byte balloons to 1.59 as it over-commits to the abstain-heavy
+preferred style). Quantifying the quality gain itself wants an LLM-judge win-rate — the natural next
+metric.
+
 ## Leaderboard: every model, one scoreboard
 
 `leaderboard_eval.py` scores **every** model we touched on the **same** held-out sets. Because
@@ -713,11 +749,18 @@ the site and is meant to grow as we add models.
 | Our base | 125.8M | **0.849** | 1.4% | 0% |
 | Our SFT | 125.8M | 0.870 | 7.1% | 0% |
 | Our RAFT | 125.8M | 0.938 | 24.3% | 0% |
+| 500M base (mentor) | 517M | **0.784** | 14.3% | 0% |
+| 500M SFT | 517M | 0.822 | 5.7% | 0% |
+| 500M RAFT | 517M | 0.954 | 28.6% | 20% |
 | Gemma 2B (off-the-shelf) | 2.61B | 0.874 | 35.7% | 90% |
 | Gemma SFT (QLoRA) | 2.61B | 1.000 | 32.9% | 0% |
 | Gemma RAFT (QLoRA) | 2.61B | 0.981 | **37.1%** | **100%** |
 
+The **12 DPO/RLAIF models** sit on the [live leaderboard](https://legal-slm-125.vercel.app) too (22 rows,
+sortable) — omitted here for length; see the alignment note above for how to read them.
+
 - **Grounded accuracy climbs every stage** (our arc 1.4% → 7.1% → 24.3%); Gemma RAFT is best at 37%.
+- **Abstention emerges with scale:** 125M RAFT 0% → 500M RAFT 20% → Gemma RAFT 100% faithful refusal.
 - **Our from-scratch base has the lowest bits/byte on legal text** — it specialised on exactly
   this domain, so it out-models a general 2B at raw legal LM (fine-tuning for QA then *raises*
   bits/byte, trading language modeling for task behaviour).
@@ -748,7 +791,12 @@ honest about it helps you budget:
 | L4 (Modal) | ~$0.3 | Phase 9: RAFT fine-tune + arc eval |
 | A100 (Modal) | ~$5.5 | Phase 10: Gemma 2B QLoRA SFT (~$4) + RAFT (~$1.5) |
 | L4 (Modal) | ~$0.15 | Phase 10: Gemma QLoRA pilot |
-| **Total usage** | **~$54** | Modal (~$45) + Gemini (~$2) + OpenRouter (~$7) |
+| A100 (Modal) | ~$0.9 | Phase 11: mentor 500M SFT + RAFT (full FT) |
+| OpenRouter (minimax-m3) | ~$2.6 | Phase 12: preference pairs (~4.7k, DPO + RLAIF) |
+| A100 (Modal) | ~$4.3 | Phase 12: 6 DPO models + 2 reward models |
+| A100 (Modal) | ~$16 | Phase 12: 6 RLAIF/GRPO models (incl. ~$9 wasted on 90-min timeouts) |
+| A100 (Modal) | ~$3 | Leaderboard evals (22 models, batched) |
+| **Total usage** | **~$80** | Modal (~$68) + Gemini (~$2) + OpenRouter (~$10) |
 
 Modal's free tier (~$30/month credits) absorbs most of the Modal spend; out-of-pocket
 for the Modal side was ~$9, and the fine-tuning stage (Phases 8) added only ~$2 of
