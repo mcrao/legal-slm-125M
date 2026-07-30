@@ -62,6 +62,29 @@ export const LEADER_METRICS = [
   { key: "faithful_refusal", label: "Faithful refusal", better: "high", hint: "On questions whose answer is NOT in the given context, the fraction where the model declines instead of fabricating. High is honest." },
 ] as const;
 
+// Compute + API spend, tracked per model and per shared resource. Estimated from GPU
+// type × wall-clock on Modal (H100 ~$3.95/hr, A100-40 ~$2.10/hr, L4 ~$0.80/hr) plus
+// OpenRouter/Gemini usage. Borrowed models (mentor 125M/500M base, Gemma 2B base) cost us $0.
+export const EXPENSES = {
+  trained: [
+    { name: "Our 125M base", detail: "pretrain · 8×H100 · 2 epochs", cost: 36.0 },
+    { name: "Our 125M SFT / RAFT", detail: "full fine-tune · 1×L4", cost: 0.35 },
+    { name: "500M SFT / RAFT", detail: "full fine-tune · 1×A100", cost: 0.45 },
+    { name: "Gemma 2B SFT (QLoRA)", detail: "1×A100 · ~1.8h", cost: 4.0 },
+    { name: "Gemma 2B RAFT (QLoRA)", detail: "1×A100 · ~0.6h", cost: 1.5 },
+    { name: "DPO ×6", detail: "SLM full-FT + Gemma QLoRA · A100", cost: 4.0 },
+    { name: "Reward models ×2", detail: "500M Bradley-Terry · A100", cost: 0.8 },
+    { name: "RLAIF / GRPO ×6", detail: "on-policy, reward-model scored · A100", cost: 14.0 },
+  ],
+  shared: [
+    { name: "Data pipeline", detail: "clean · dedup · decontaminate · CPU", cost: 2.0 },
+    { name: "SFT Q&A dataset", detail: "Gemini teacher + judge", cost: 2.0 },
+    { name: "RAFT dataset", detail: "MiniMax-M3 teacher + judge", cost: 7.2 },
+    { name: "Preference pairs", detail: "MiniMax-M3, ~4.7k pairs", cost: 2.6 },
+    { name: "Evals + serving", detail: "leaderboard evals + scale-to-zero endpoints", cost: 3.0 },
+  ],
+} as const;
+
 export const SPEC_PRESETS = [
   { label: "Structured (high accept)", prompt: "List the integers from 1 to 40, separated by commas." },
   { label: "Legal boilerplate", prompt: "Write the standard opening recital of a commercial lease agreement between a landlord and a tenant." },

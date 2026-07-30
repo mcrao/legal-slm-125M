@@ -10,6 +10,7 @@ const LINKS = [
   { id: "raft", label: "RAFT", small: false },
   { id: "compare", label: "Compare", small: true },
   { id: "leaderboard", label: "Leaderboard", small: false },
+  { id: "cost", label: "Cost", small: true },
   { id: "inference", label: "Inference", small: true },
   { id: "arch", label: "Architecture", small: true },
 ];

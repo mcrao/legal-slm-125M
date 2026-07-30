@@ -47,6 +47,20 @@ MODELS = [
     {"id": "google/gemma-2-2b-it",         "name": "Gemma 2B (off-the-shelf)", "family": "gemma", "kind": "base", "params": "2.61B", "arch": "Gemma 2", "note": "no legal training"},
     {"id": "jonam-ai/gemma-2-2b-legal-sft",  "name": "Gemma SFT",  "family": "gemma", "kind": "sft",  "params": "2.61B", "arch": "Gemma 2", "note": "QLoRA"},
     {"id": "jonam-ai/gemma-2-2b-legal-raft", "name": "Gemma RAFT", "family": "gemma", "kind": "raft", "params": "2.61B", "arch": "Gemma 2", "note": "QLoRA"},
+    # ---- DPO (preference optimization) ----
+    {"id": "jonam-ai/legal-slm-125m-sft-dpo",  "name": "Our SFT + DPO",  "family": "slm", "kind": "dpo", "fmt": "sft",  "params": "125.8M", "arch": "Llama 125M", "note": "DPO on SFT"},
+    {"id": "jonam-ai/legal-slm-500m-sft-dpo",  "name": "500M SFT + DPO",  "family": "slm", "kind": "dpo", "fmt": "sft",  "params": "517M",   "arch": "Llama 500M", "note": "DPO on SFT"},
+    {"id": "jonam-ai/gemma-2-2b-legal-sft-dpo","name": "Gemma SFT + DPO", "family": "gemma", "kind": "dpo", "fmt": "sft",  "params": "2.61B", "arch": "Gemma 2", "note": "DPO on SFT (QLoRA)"},
+    {"id": "jonam-ai/legal-slm-125m-raft-dpo", "name": "Our RAFT + DPO",  "family": "slm", "kind": "dpo", "fmt": "raft", "params": "125.8M", "arch": "Llama 125M", "note": "DPO on RAFT"},
+    {"id": "jonam-ai/legal-slm-500m-raft-dpo", "name": "500M RAFT + DPO", "family": "slm", "kind": "dpo", "fmt": "raft", "params": "517M",   "arch": "Llama 500M", "note": "DPO on RAFT"},
+    {"id": "jonam-ai/gemma-2-2b-legal-raft-dpo","name": "Gemma RAFT + DPO","family": "gemma", "kind": "dpo", "fmt": "raft", "params": "2.61B", "arch": "Gemma 2", "note": "DPO on RAFT (QLoRA)"},
+    # ---- RLAIF (reward model + GRPO) ----
+    {"id": "jonam-ai/legal-slm-125m-sft-rlaif",  "name": "Our SFT + RLAIF",  "family": "slm", "kind": "rlaif", "fmt": "sft",  "params": "125.8M", "arch": "Llama 125M", "note": "GRPO on SFT"},
+    {"id": "jonam-ai/legal-slm-500m-sft-rlaif",  "name": "500M SFT + RLAIF",  "family": "slm", "kind": "rlaif", "fmt": "sft",  "params": "517M",   "arch": "Llama 500M", "note": "GRPO on SFT"},
+    {"id": "jonam-ai/gemma-2-2b-legal-sft-rlaif","name": "Gemma SFT + RLAIF", "family": "gemma", "kind": "rlaif", "fmt": "sft",  "params": "2.61B", "arch": "Gemma 2", "note": "GRPO on SFT (QLoRA)"},
+    {"id": "jonam-ai/legal-slm-125m-raft-rlaif", "name": "Our RAFT + RLAIF",  "family": "slm", "kind": "rlaif", "fmt": "raft", "params": "125.8M", "arch": "Llama 125M", "note": "GRPO on RAFT"},
+    {"id": "jonam-ai/legal-slm-500m-raft-rlaif", "name": "500M RAFT + RLAIF", "family": "slm", "kind": "rlaif", "fmt": "raft", "params": "517M",   "arch": "Llama 500M", "note": "GRPO on RAFT"},
+    {"id": "jonam-ai/gemma-2-2b-legal-raft-rlaif","name": "Gemma RAFT + RLAIF","family": "gemma", "kind": "rlaif", "fmt": "raft", "params": "2.61B", "arch": "Gemma 2", "note": "GRPO on RAFT (QLoRA)"},
 ]
 
 REFUSAL_MARKERS = [
@@ -124,11 +138,13 @@ def evaluate(n_closed: int = 50, n_grounded: int = 70, n_refuse: int = 40, n_bpb
     print(f"sets: closed={len(closed)} grounded={len(grounded)} refuse={len(refuse)} bpb={len(bpb_texts)}", flush=True)
 
     def build_seq(meta, tok, question, context):
-        """Per-family prompt wrapper -> list[int] token ids."""
-        fam, kind = meta["family"], meta["kind"]
-        system = RAFT_SYSTEM if kind == "raft" else SFT_SYSTEM
+        """Per-family prompt wrapper -> list[int] token ids. `fmt` (base/sft/raft) picks the
+        prompt shape; DPO/RLAIF models set it to their underlying setting."""
+        fam = meta["family"]
+        fmt = meta.get("fmt", meta["kind"])
+        system = RAFT_SYSTEM if fmt == "raft" else SFT_SYSTEM
         user = f"{context}\n\nQuestion: {question}" if context else question
-        if fam == "slm" and kind == "base":
+        if fam == "slm" and fmt == "base":
             text = (f"{context}\n\nQuestion: {question}\nAnswer:" if context
                     else f"Question: {question}\nAnswer:")
             return tok(text)["input_ids"]
@@ -161,9 +177,13 @@ def evaluate(n_closed: int = 50, n_grounded: int = 70, n_refuse: int = 40, n_bpb
             print(f"{meta['name']:26s} (cached)", flush=True)
             continue
         dtype = torch.float32 if meta["family"] == "slm" else torch.bfloat16
-        tok = AutoTokenizer.from_pretrained(mid)
-        model = AutoModelForCausalLM.from_pretrained(mid, torch_dtype=dtype,
-                                                     device_map={"": 0}).eval()
+        try:
+            tok = AutoTokenizer.from_pretrained(mid)
+            model = AutoModelForCausalLM.from_pretrained(mid, torch_dtype=dtype,
+                                                         device_map={"": 0}).eval()
+        except Exception as e:
+            print(f"{meta['name']:26s} SKIP (load failed: {str(e)[:70]})", flush=True)
+            continue
         eos_list, pad = eos_ids(meta, tok)
 
         # bits-per-byte + own-tokenizer perplexity on held-out legal text
