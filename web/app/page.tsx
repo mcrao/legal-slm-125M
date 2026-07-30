@@ -105,8 +105,9 @@ export default function Home() {
           and Gemma lands highest at 37%. But watch the <strong style={{ fontWeight: 500, color: "var(--ink)" }}>faithful-refusal
           column</strong>: Gemma off-the-shelf already declines 90% of unanswerable questions, our SFT step
           <em> destroys</em> that instinct (it learns to always answer, 0%), and only RAFT with abstention
-          examples brings it back — to 100% for Gemma. Our 125M never learns to refuse at all: too small to
-          hold the distinction. Fine-tuning gives and fine-tuning takes away.
+          examples brings it back — to 100% for Gemma. And you can watch abstention <em>emerge with scale</em>:
+          the 125M RAFT never learns to refuse (0%), the 500M RAFT starts to (20%), Gemma nails it (100%).
+          Faithfulness isn&apos;t a prompt trick — past a point it&apos;s a capability that costs parameters.
         </p>
       </Section>
 

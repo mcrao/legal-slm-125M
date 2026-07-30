@@ -41,6 +41,9 @@ MODELS = [
     {"id": "jonam-ai/slm-125m-base",    "name": "Our base",    "family": "slm", "kind": "base", "params": "125.8M", "arch": "Llama 125M", "note": "our 2-epoch pretrain"},
     {"id": "jonam-ai/legal-slm-125m-sft",  "name": "Our SFT",  "family": "slm", "kind": "sft",  "params": "125.8M", "arch": "Llama 125M", "note": "full fine-tune"},
     {"id": "jonam-ai/legal-slm-125m-raft", "name": "Our RAFT", "family": "slm", "kind": "raft", "params": "125.8M", "arch": "Llama 125M", "note": "full fine-tune"},
+    {"id": "thesreedath/slm-500m-base",    "name": "500M base (mentor)", "family": "slm", "kind": "base", "params": "517M", "arch": "Llama 500M", "note": "peer 500M pretrain"},
+    {"id": "jonam-ai/legal-slm-500m-sft",  "name": "500M SFT",  "family": "slm", "kind": "sft",  "params": "517M", "arch": "Llama 500M", "note": "full fine-tune"},
+    {"id": "jonam-ai/legal-slm-500m-raft", "name": "500M RAFT", "family": "slm", "kind": "raft", "params": "517M", "arch": "Llama 500M", "note": "full fine-tune"},
     {"id": "google/gemma-2-2b-it",         "name": "Gemma 2B (off-the-shelf)", "family": "gemma", "kind": "base", "params": "2.61B", "arch": "Gemma 2", "note": "no legal training"},
     {"id": "jonam-ai/gemma-2-2b-legal-sft",  "name": "Gemma SFT",  "family": "gemma", "kind": "sft",  "params": "2.61B", "arch": "Gemma 2", "note": "QLoRA"},
     {"id": "jonam-ai/gemma-2-2b-legal-raft", "name": "Gemma RAFT", "family": "gemma", "kind": "raft", "params": "2.61B", "arch": "Gemma 2", "note": "QLoRA"},
@@ -66,9 +69,11 @@ hf_secret = modal.Secret.from_name("huggingface-token")
 
 
 @app.function(image=gpu_image, gpu="A100-40GB", volumes=VOLUMES, secrets=[hf_secret], timeout=60 * 60)
-def evaluate(n_closed: int = 50, n_grounded: int = 70, n_refuse: int = 40, n_bpb: int = 50) -> dict:
+def evaluate(n_closed: int = 50, n_grounded: int = 70, n_refuse: int = 40, n_bpb: int = 50,
+             force: bool = False) -> dict:
     import json
     import math
+    import os
     import re
 
     import torch
@@ -142,9 +147,19 @@ def evaluate(n_closed: int = 50, n_grounded: int = 70, n_refuse: int = 40, n_bpb
         eot = tok.convert_tokens_to_ids("<end_of_turn>")
         return [tok.eos_token_id, eot], tok.eos_token_id
 
+    lb_path = f"{config.DATA_ROOT}/leaderboard.json"
+    existing = {}
+    if not force and os.path.exists(lb_path):
+        existing = {r["id"]: r for r in json.load(open(lb_path)).get("models", [])}
+        print(f"reusing {len(existing)} cached rows", flush=True)
+
     results = []
     for meta in MODELS:
         mid = meta["id"]
+        if mid in existing:
+            results.append(existing[mid])
+            print(f"{meta['name']:26s} (cached)", flush=True)
+            continue
         dtype = torch.float32 if meta["family"] == "slm" else torch.bfloat16
         tok = AutoTokenizer.from_pretrained(mid)
         model = AutoModelForCausalLM.from_pretrained(mid, torch_dtype=dtype,
