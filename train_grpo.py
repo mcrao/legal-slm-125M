@@ -42,7 +42,7 @@ VOLUMES = {config.DATA_ROOT: volume}
 hf_secret = modal.Secret.from_name("huggingface-token")
 
 
-@app.function(image=image, gpu="A100-40GB", volumes=VOLUMES, secrets=[hf_secret], timeout=60 * 90)
+@app.function(image=image, gpu="A100-40GB", volumes=VOLUMES, secrets=[hf_secret], timeout=60 * 240)
 def grpo(family: str, setting: str, base: str, repo: str, n_prompts: int = 800,
          epochs: float = 1.0, lr: float = 0.0, pilot: bool = False) -> dict:
     import json
@@ -160,14 +160,35 @@ GRPO_JOBS = [
 
 @app.local_entrypoint()
 def run(family: str = "slm", setting: str = "sft", base: str = "jonam-ai/legal-slm-125m-sft",
-        repo: str = "jonam-ai/legal-slm-125m-sft-rlaif", epochs: float = 1.0, pilot: bool = False):
-    grpo.remote(family=family, setting=setting, base=base, repo=repo, epochs=epochs, pilot=pilot)
+        repo: str = "jonam-ai/legal-slm-125m-sft-rlaif", epochs: float = 1.0,
+        n_prompts: int = 800, pilot: bool = False):
+    grpo.remote(family=family, setting=setting, base=base, repo=repo, epochs=epochs,
+                n_prompts=n_prompts, pilot=pilot)
 
 
 @app.local_entrypoint()
 def batch(epochs: float = 1.0):
     calls = [(r, grpo.spawn(family=f, setting=s, base=b, repo=r, epochs=epochs))
              for f, s, b, r in GRPO_JOBS]
+    for repo, c in calls:
+        try:
+            print(repo, "->", c.get())
+        except Exception as e:
+            print(repo, "FAILED", str(e)[:200])
+
+
+# The three that timed out at 90 min — smaller prompt set, 4h timeout.
+RERUN = [
+    ("slm", "raft", "jonam-ai/legal-slm-500m-raft", "jonam-ai/legal-slm-500m-raft-rlaif"),
+    ("gemma", "sft", "jonam-ai/gemma-2-2b-legal-sft", "jonam-ai/gemma-2-2b-legal-sft-rlaif"),
+    ("gemma", "raft", "jonam-ai/gemma-2-2b-legal-raft", "jonam-ai/gemma-2-2b-legal-raft-rlaif"),
+]
+
+
+@app.local_entrypoint()
+def rerun(epochs: float = 1.0, n_prompts: int = 400):
+    calls = [(r, grpo.spawn(family=f, setting=s, base=b, repo=r, epochs=epochs, n_prompts=n_prompts))
+             for f, s, b, r in RERUN]
     for repo, c in calls:
         try:
             print(repo, "->", c.get())
