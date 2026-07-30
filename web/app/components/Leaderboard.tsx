@@ -42,12 +42,15 @@ export default function Leaderboard() {
     );
   }
 
-  // Bar length is proportional to the raw value (relative to the column's max), so the bar
-  // always matches the number. Colour, not length, marks the best (green).
+  // Accuracy / refusal are true 0–100% metrics, so the bar is the ABSOLUTE percentage
+  // (37% fills 37% of the track). Bits/byte is an unbounded score with no natural 100%,
+  // so its bar is relative to the worst value in the column. Green always marks the best.
   function barWidth(key: Key, v: number) {
-    const { max } = stats[key];
-    if (max <= 0) return 3;
-    return 3 + (v / max) * 97;
+    if (key === "bits_per_byte") {
+      const { max } = stats[key];
+      return max <= 0 ? 3 : 3 + (v / max) * 97;
+    }
+    return Math.max(2, Math.min(100, v * 100));
   }
 
   return (
@@ -84,9 +87,10 @@ export default function Leaderboard() {
                     <td key={m.key} style={{ padding: "0.7rem 0.6rem", verticalAlign: "middle" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <div style={{ flex: 1, height: 6, background: "var(--paper-3)", borderRadius: 3, overflow: "hidden", minWidth: 40 }}>
-                          <div style={{ width: `${barWidth(m.key, v)}%`, height: "100%", background: isBest ? famTone(r.family) : "var(--line-2)", opacity: isBest ? 0.65 : 1, transition: "width 0.4s" }} />
+                          <div style={{ width: `${barWidth(m.key, v)}%`, height: "100%", background: isBest ? "var(--green)" : "var(--line-2)", opacity: isBest ? 0.7 : 1, transition: "width 0.4s" }} />
                         </div>
-                        <span className="mono tnum" style={{ fontSize: "0.8rem", width: "3ch", textAlign: "right", color: isBest ? famTone(r.family) : "var(--ink-soft)", fontWeight: isBest ? 600 : 400 }}>{disp}</span>
+                        {isBest && <span className="mono" style={{ fontSize: "0.55rem", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--green)" }}>best</span>}
+                        <span className="mono tnum" style={{ fontSize: "0.8rem", minWidth: "3.5ch", textAlign: "right", color: isBest ? "var(--green)" : "var(--ink-soft)", fontWeight: isBest ? 600 : 400 }}>{disp}</span>
                       </div>
                     </td>
                   );
@@ -104,8 +108,11 @@ export default function Leaderboard() {
             <span className="mono" style={{ color: "var(--muted)" }}>{m.label} {m.better === "low" ? "↓" : "↑"}</span> — {m.hint}
           </p>
         ))}
-        <p style={{ margin: "0.3rem 0 0", fontSize: "0.72rem", color: "var(--faint)" }}>
-          Click a column to sort. Same held-out sets for every model; only the prompt wrapper differs per family.
+        <p style={{ margin: "0.5rem 0 0", fontSize: "0.72rem", color: "var(--faint)", lineHeight: 1.5 }}>
+          <span style={{ color: "var(--green)", fontWeight: 600 }}>Green</span> marks the best score in each
+          column — that means the <b>lowest</b> bits/byte (the arrow is ↓) and the <b>highest</b> accuracy and
+          refusal (↑). Accuracy and refusal bars are absolute (0–100%); the bits/byte bar is relative to the
+          worst value, since it has no natural ceiling. Click a column header to sort.
         </p>
       </div>
     </div>
