@@ -74,8 +74,8 @@ export default function Alignment() {
 
   return (
     <div className="paper-card" style={{ padding: "clamp(1.25rem, 3vw, 2rem)" }}>
-      {/* pickers */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "1.4rem", marginBottom: "1.3rem" }}>
+      {/* pickers — three equal sections across the full width */}
+      <div className="trio" style={{ marginBottom: "1.3rem" }}>
         <Picker label="Method" value={method} onChange={(v) => setMethod(v as Method)}
                 options={[["dpo", "DPO"], ["rlaif", "RLAIF"]]} disabled={busy} />
         <Picker label="Built on" value={stage} onChange={(v) => setStage(v as Stage)}
@@ -88,8 +88,8 @@ export default function Alignment() {
         {modelId.replace("jonam-ai/", "")}
       </div>
 
-      {/* per-model spec card: trainable params · architecture · training tokens · cost */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1px", background: "var(--line)", border: "1px solid var(--line)", borderRadius: 5, overflow: "hidden", marginBottom: "1.3rem" }}>
+      {/* per-model spec card: trainable params · training tokens · cost across the full width, architecture spanning below */}
+      <div className="trio" style={{ marginBottom: "1.3rem" }}>
         <Spec k="Trainable params" v={spec.trainable} />
         <Spec k="Training tokens" v={`SFT ${spec.sftTokens} · ${method.toUpperCase()} ${ALIGN_METHOD_TOKENS[method]}`} />
         <Spec k={`${method.toUpperCase()} cost`} v={spec.cost[method]} tone="var(--green)" />
@@ -167,7 +167,7 @@ function Picker({ label, value, onChange, options, disabled }: {
 
 function Spec({ k, v, tone, span }: { k: string; v: string; tone?: string; span?: boolean }) {
   return (
-    <div style={{ background: "var(--paper-2)", padding: "0.75rem 0.9rem", gridColumn: span ? "1 / -1" : undefined }}>
+    <div style={{ background: "var(--paper-2)", border: "1px solid var(--line)", borderRadius: 5, padding: "0.75rem 0.9rem", gridColumn: span ? "1 / -1" : undefined }}>
       <div className="section-num" style={{ marginBottom: "0.3rem" }}>{k}</div>
       <div className="mono" style={{ fontSize: "0.74rem", color: tone ?? "var(--ink)", lineHeight: 1.5 }}>{v}</div>
     </div>

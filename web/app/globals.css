@@ -252,8 +252,12 @@ input[type="range"]::-moz-range-thumb {
 
 @keyframes drawLine { to { stroke-dashoffset: 0; } }
 
+/* three equal columns that fill the width; stack on small screens */
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+
 @media (max-width: 560px) {
   .hide-sm { display: none; }
+  .trio { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
