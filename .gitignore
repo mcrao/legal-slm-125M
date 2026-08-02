@@ -12,6 +12,7 @@ BLOG.md
 PROMPT.md
 meeting_saved_new_chat.txt
 INITIAL.md
+assignments/
 
 # ---- large artifacts (already on Hugging Face) ----
 hf_export/
