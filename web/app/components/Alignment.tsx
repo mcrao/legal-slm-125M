@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ALIGN_SIZES, alignModelId, UNIVERSAL_URL } from "@/app/lib/model";
+import { ALIGN_METHOD_TOKENS, ALIGN_QA_PRESETS, ALIGN_SIZES, ALIGN_SPEC, alignModelId, RAFT_EXAMPLES, UNIVERSAL_URL } from "@/app/lib/model";
 
 type Status = "idle" | "waking" | "streaming" | "done" | "error";
 type Method = "dpo" | "rlaif";
@@ -25,6 +25,7 @@ export default function Alignment() {
 
   const size = ALIGN_SIZES.find((s) => s.key === sizeKey) ?? ALIGN_SIZES[0];
   const modelId = alignModelId(size.prefix, stage, method);
+  const spec = ALIGN_SPEC[sizeKey as keyof typeof ALIGN_SPEC];
 
   async function run() {
     if (busy) return;
@@ -83,8 +84,32 @@ export default function Alignment() {
                 options={ALIGN_SIZES.map((s) => [s.key, s.label] as [string, string])} disabled={busy} />
       </div>
 
-      <div className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)", marginBottom: "1.1rem" }}>
+      <div className="mono" style={{ fontSize: "0.68rem", color: "var(--faint)", marginBottom: "1rem" }}>
         {modelId.replace("jonam-ai/", "")}
+      </div>
+
+      {/* per-model spec card: trainable params · architecture · training tokens · cost */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1px", background: "var(--line)", border: "1px solid var(--line)", borderRadius: 5, overflow: "hidden", marginBottom: "1.3rem" }}>
+        <Spec k="Trainable params" v={spec.trainable} />
+        <Spec k="Training tokens" v={`SFT ${spec.sftTokens} · ${method.toUpperCase()} ${ALIGN_METHOD_TOKENS[method]}`} />
+        <Spec k={`${method.toUpperCase()} cost`} v={spec.cost[method]} tone="var(--green)" />
+        <Spec k="Architecture" v={spec.arch} span />
+      </div>
+
+      {/* one-click samples */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", marginBottom: "0.9rem" }}>
+        {stage === "sft"
+          ? ALIGN_QA_PRESETS.map((p) => (
+              <button key={p} className="chip" disabled={busy} onClick={() => setMessage(p)}>
+                {p.length > 44 ? p.slice(0, 42) + "…" : p}
+              </button>
+            ))
+          : RAFT_EXAMPLES.map((ex) => (
+              <button key={ex.label} className="chip" disabled={busy}
+                onClick={() => { setContext(ex.context); setQuestion(ex.question); }}>
+                {ex.label}
+              </button>
+            ))}
       </div>
 
       {stage === "sft" ? (
@@ -136,6 +161,15 @@ function Picker({ label, value, onChange, options, disabled }: {
           <button key={v} data-active={value === v} onClick={() => !disabled && onChange(v)} disabled={disabled}>{l}</button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function Spec({ k, v, tone, span }: { k: string; v: string; tone?: string; span?: boolean }) {
+  return (
+    <div style={{ background: "var(--paper-2)", padding: "0.75rem 0.9rem", gridColumn: span ? "1 / -1" : undefined }}>
+      <div className="section-num" style={{ marginBottom: "0.3rem" }}>{k}</div>
+      <div className="mono" style={{ fontSize: "0.74rem", color: tone ?? "var(--ink)", lineHeight: 1.5 }}>{v}</div>
     </div>
   );
 }

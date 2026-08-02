@@ -57,6 +57,43 @@ export function alignModelId(sizePrefix: string, stage: "sft" | "raft", method: 
   return `${sizePrefix}-${stage}-${method}`;
 }
 
+// Per-model spec shown live in the Alignment panel: trainable params, architecture,
+// training tokens, and training cost — updates with the selected size/stage/method.
+export const ALIGN_SPEC = {
+  "125m": {
+    arch: "Llama-style · 12 layers · 768 dim · 12 heads (MHA) · 16,384 vocab · 1,024 ctx",
+    trainable: "125.8M · 100% (full fine-tune)",
+    sftTokens: "~1.06M (2 epochs)",
+    cost: { dpo: "~$0.30", rlaif: "~$0.75" },
+  },
+  "500m": {
+    arch: "Llama-style · 24 layers · 1,280 dim · 20 heads (MHA) · 32,768 vocab · 1,024 ctx",
+    trainable: "517M · 100% (full fine-tune)",
+    sftTokens: "~0.5M (1 epoch)",
+    cost: { dpo: "~$0.60", rlaif: "~$1.30" },
+  },
+  "gemma": {
+    arch: "Gemma 2 · 26 layers · 2,304 dim · 8 heads / 4 KV (GQA) · 256,000 vocab · 8,192 ctx",
+    trainable: "20.8M · 0.79% (QLoRA, 4-bit NF4 base frozen)",
+    sftTokens: "~1.52M (3 epochs)",
+    cost: { dpo: "~$5.0", rlaif: "~$7.0" },
+  },
+} as const;
+
+export const ALIGN_METHOD_TOKENS = {
+  dpo: "2,223 preference pairs × 2 epochs",
+  rlaif: "800 on-policy prompts (400 for Gemma) + reward model",
+} as const;
+
+// One-click sample questions for the Alignment (SFT-stage) panel.
+export const ALIGN_QA_PRESETS = [
+  "What must a plaintiff prove in a breach of contract claim?",
+  "What is the purpose of a Form 10-K filing?",
+  "What does an indemnification clause do?",
+  "Explain 'preponderance of the evidence'.",
+  "What are the fiduciary duties of a corporate director?",
+] as const;
+
 // Inference-optimization demos.
 export const KV_URL =
   process.env.NEXT_PUBLIC_KV_URL ?? "https://mcrao--slm-125m-kvcache-kv-web.modal.run";
