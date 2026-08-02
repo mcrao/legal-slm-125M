@@ -2,7 +2,7 @@ import Alignment from "@/app/components/Alignment";
 import Chat from "@/app/components/Chat";
 import Expenses from "@/app/components/Expenses";
 import KvCache from "@/app/components/KvCache";
-import Leaderboard from "@/app/components/Leaderboard";
+import LeaderboardTabs from "@/app/components/LeaderboardTabs";
 import ModelCompare from "@/app/components/ModelCompare";
 import Nav from "@/app/components/Nav";
 import Playground from "@/app/components/Playground";
@@ -127,14 +127,15 @@ export default function Home() {
 
       <Section n="06" eyebrow="Leaderboard" title="Every model, one scoreboard">
         <p style={lead}>
-          The whole family on the same held-out sets, with metrics that survive different
-          tokenizers. Language modeling is scored in <strong style={{ fontWeight: 500, color: "var(--green)" }}>bits per byte</strong>
-          {" "}(not perplexity, which isn&apos;t comparable across a 16k and a 256k vocab). Includes
-          Gemma 2 2B straight off the shelf — untouched by us — so you can see what a real
-          pretrained model scores on legal data with zero fine-tuning.
+          Every model on the same held-out sets, in two views. <strong style={{ fontWeight: 500, color: "var(--green)" }}>Quality</strong> is
+          an independent LLM judge (DeepSeek-V3, which made none of our training data) scoring each answer out
+          of 10 against a gold reference and its evidence — reference-grounded, so it is checkable rather than
+          vibes, and it finally makes the DPO/RLAIF work visible. <strong style={{ fontWeight: 500, color: "var(--green)" }}>Capability</strong> is
+          the tokenizer-fair side: bits-per-byte language modeling plus exact-match accuracy. Both include
+          Gemma 2 2B off the shelf, so you can see what a real pretrained model scores with zero legal training.
         </p>
         <div style={{ marginTop: "1.9rem" }}>
-          <Leaderboard />
+          <LeaderboardTabs />
         </div>
         <p style={{ ...lead, marginTop: "1.6rem" }}>
           Two things jump out. <strong style={{ fontWeight: 500, color: "var(--ink)" }}>Grounded accuracy

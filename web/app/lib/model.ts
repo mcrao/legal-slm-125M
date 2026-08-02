@@ -103,6 +103,54 @@ export const LEADERBOARD: { models: LeaderRow[]; sets: Record<string, number> } 
   sets: { closed: 50, grounded: 70, refuse: 40, bpb: 50 },
 };
 
+// LLM-judge quality leaderboard (reference-grounded, DeepSeek-V3, rubric /10). Regenerate
+// with `modal run judge_eval.py::run` and paste the JSON's "models" array + meta here.
+export type JudgeRow = {
+  name: string; family: "slm" | "gemma"; fmt: "base" | "sft" | "raft"; params: string; id: string;
+  judge_overall: number; judge_qa: number; judge_grounded: number; judge_refusal: number;
+  quote_validity: number | null; over_refusal: number; n: number;
+};
+export const JUDGE_LEADERBOARD: {
+  judge_model: string; self_agreement_exact: number; self_agreement_within1: number;
+  models: JudgeRow[]; items: Record<string, number>;
+} = {
+  judge_model: "deepseek/deepseek-chat", self_agreement_exact: 0.636, self_agreement_within1: 0.791,
+  models: [
+    { name: "Mentor base", family: "slm", fmt: "base", params: "125.8M", id: "thesreedath/slm-125m-base", judge_overall: 1.55, judge_qa: 0.37, judge_grounded: 0.45, judge_refusal: 4.72, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Our base", family: "slm", fmt: "base", params: "125.8M", id: "jonam-ai/slm-125m-base", judge_overall: 1.95, judge_qa: 1.17, judge_grounded: 1.43, judge_refusal: 3.72, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Our SFT", family: "slm", fmt: "sft", params: "125.8M", id: "jonam-ai/legal-slm-125m-sft", judge_overall: 3.89, judge_qa: 2.8, judge_grounded: 1.82, judge_refusal: 8.52, quote_validity: null, over_refusal: 0.025, n: 95 },
+    { name: "Our RAFT", family: "slm", fmt: "raft", params: "125.8M", id: "jonam-ai/legal-slm-125m-raft", judge_overall: 3.29, judge_qa: 3.0, judge_grounded: 3.95, judge_refusal: 2.6, quote_validity: 0.393, over_refusal: 0.0, n: 95 },
+    { name: "500M base (mentor)", family: "slm", fmt: "base", params: "517M", id: "thesreedath/slm-500m-base", judge_overall: 2.36, judge_qa: 1.27, judge_grounded: 1.85, judge_refusal: 4.48, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "500M SFT", family: "slm", fmt: "sft", params: "517M", id: "jonam-ai/legal-slm-500m-sft", judge_overall: 3.95, judge_qa: 3.6, judge_grounded: 2.92, judge_refusal: 6.0, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "500M RAFT", family: "slm", fmt: "raft", params: "517M", id: "jonam-ai/legal-slm-500m-raft", judge_overall: 6.24, judge_qa: 6.73, judge_grounded: 6.3, judge_refusal: 5.56, quote_validity: 0.842, over_refusal: 0.25, n: 95 },
+    { name: "Gemma 2B (off-the-shelf)", family: "gemma", fmt: "base", params: "2.61B", id: "google/gemma-2-2b-it", judge_overall: 7.23, judge_qa: 3.97, judge_grounded: 7.95, judge_refusal: 10.0, quote_validity: null, over_refusal: 0.225, n: 95 },
+    { name: "Gemma SFT", family: "gemma", fmt: "sft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-sft", judge_overall: 6.02, judge_qa: 5.87, judge_grounded: 5.8, judge_refusal: 6.56, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Gemma RAFT", family: "gemma", fmt: "raft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-raft", judge_overall: 8.13, judge_qa: 5.8, judge_grounded: 8.7, judge_refusal: 10.0, quote_validity: 0.944, over_refusal: 0.25, n: 95 },
+    { name: "Our SFT + DPO", family: "slm", fmt: "sft", params: "125.8M", id: "jonam-ai/legal-slm-125m-sft-dpo", judge_overall: 4.14, judge_qa: 2.9, judge_grounded: 2.33, judge_refusal: 8.52, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "500M SFT + DPO", family: "slm", fmt: "sft", params: "517M", id: "jonam-ai/legal-slm-500m-sft-dpo", judge_overall: 4.21, judge_qa: 3.87, judge_grounded: 2.88, judge_refusal: 6.76, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Gemma SFT + DPO", family: "gemma", fmt: "sft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-sft-dpo", judge_overall: 5.55, judge_qa: 4.77, judge_grounded: 5.03, judge_refusal: 7.32, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Our RAFT + DPO", family: "slm", fmt: "raft", params: "125.8M", id: "jonam-ai/legal-slm-125m-raft-dpo", judge_overall: 3.78, judge_qa: 2.23, judge_grounded: 3.33, judge_refusal: 6.36, quote_validity: 0.44, over_refusal: 0.0, n: 95 },
+    { name: "500M RAFT + DPO", family: "slm", fmt: "raft", params: "517M", id: "jonam-ai/legal-slm-500m-raft-dpo", judge_overall: 6.13, judge_qa: 5.8, judge_grounded: 6.4, judge_refusal: 6.08, quote_validity: 0.789, over_refusal: 0.25, n: 95 },
+    { name: "Gemma RAFT + DPO", family: "gemma", fmt: "raft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-raft-dpo", judge_overall: 7.94, judge_qa: 5.77, judge_grounded: 8.28, judge_refusal: 10.0, quote_validity: 0.611, over_refusal: 0.275, n: 95 },
+    { name: "Our SFT + RLAIF", family: "slm", fmt: "sft", params: "125.8M", id: "jonam-ai/legal-slm-125m-sft-rlaif", judge_overall: 4.47, judge_qa: 2.47, judge_grounded: 3.25, judge_refusal: 8.84, quote_validity: null, over_refusal: 0.025, n: 95 },
+    { name: "500M SFT + RLAIF", family: "slm", fmt: "sft", params: "517M", id: "jonam-ai/legal-slm-500m-sft-rlaif", judge_overall: 4.8, judge_qa: 4.2, judge_grounded: 2.75, judge_refusal: 8.8, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Gemma SFT + RLAIF", family: "gemma", fmt: "sft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-sft-rlaif", judge_overall: 5.88, judge_qa: 5.17, judge_grounded: 5.75, judge_refusal: 6.96, quote_validity: null, over_refusal: 0.0, n: 95 },
+    { name: "Our RAFT + RLAIF", family: "slm", fmt: "raft", params: "125.8M", id: "jonam-ai/legal-slm-125m-raft-rlaif", judge_overall: 3.76, judge_qa: 2.93, judge_grounded: 4.28, judge_refusal: 3.92, quote_validity: 0.368, over_refusal: 0.0, n: 95 },
+    { name: "500M RAFT + RLAIF", family: "slm", fmt: "raft", params: "517M", id: "jonam-ai/legal-slm-500m-raft-rlaif", judge_overall: 5.77, judge_qa: 5.57, judge_grounded: 6.38, judge_refusal: 5.04, quote_validity: 0.793, over_refusal: 0.25, n: 95 },
+    { name: "Gemma RAFT + RLAIF", family: "gemma", fmt: "raft", params: "2.61B", id: "jonam-ai/gemma-2-2b-legal-raft-rlaif", judge_overall: 8.04, judge_qa: 6.5, judge_grounded: 7.97, judge_refusal: 10.0, quote_validity: 0.667, over_refusal: 0.925, n: 95 },
+  ],
+  items: { qa: 30, grounded: 40, refuse: 25 },
+};
+
+export const JUDGE_METRICS = [
+  { key: "judge_overall", label: "Mean /10", better: "high", scale: "out10", hint: "Mean judge score across all held-out items, out of 10 (correctness 0-5 · completeness 0-2 · groundedness 0-2 · clarity 0-1)." },
+  { key: "judge_qa", label: "QA", better: "high", scale: "out10", hint: "Closed-book QA — answer from the weights, no context." },
+  { key: "judge_grounded", label: "Grounded", better: "high", scale: "out10", hint: "Grounded (RAFT) — answer with the relevant context provided." },
+  { key: "judge_refusal", label: "Refusal", better: "high", scale: "out10", hint: "Unanswerable — the correct answer is to decline; fabricating scores near 0." },
+  { key: "quote_validity", label: "Quote valid", better: "high", scale: "pct", hint: "Of grounded answers that quote, the fraction whose quote really appears in the context (programmatic)." },
+  { key: "over_refusal", label: "Over-refusal", better: "low", scale: "pct", hint: "Fraction of ANSWERABLE questions the model wrongly declines. Lower is better." },
+] as const;
+
 export const LEADER_METRICS = [
   { key: "bits_per_byte", label: "Bits / byte", better: "low", hint: "Language modeling on held-out legal text. Lower is better. Normalized per UTF-8 byte, so it is comparable across the 16k and 256k tokenizers." },
   { key: "grounded_acc", label: "Grounded acc", better: "high", hint: "Answer-match accuracy WITH the relevant context provided (RAFT-style). Tests reading, not memory." },
@@ -128,7 +176,7 @@ export const EXPENSES = {
     { name: "SFT Q&A dataset", detail: "Gemini teacher + judge", cost: 2.0 },
     { name: "RAFT dataset", detail: "MiniMax-M3 teacher + judge", cost: 7.2 },
     { name: "Preference pairs", detail: "MiniMax-M3, ~4.7k pairs", cost: 2.6 },
-    { name: "Evals + serving", detail: "leaderboard evals + scale-to-zero endpoints", cost: 3.0 },
+    { name: "Evals + serving", detail: "capability + LLM-judge evals + scale-to-zero endpoints", cost: 4.5 },
   ],
 } as const;
 

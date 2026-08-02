@@ -112,6 +112,7 @@ so any phase can be re-run or resumed independently.
 | `inference_kv.py` | KV-cache benchmark endpoint (125M, L4): same generation with/without `use_cache`, batch-size slider |
 | `inference_spec.py` | Speculative-decoding endpoint (Qwen2.5 7B target + 0.5B draft): throughput, acceptance rate, per-token provenance |
 | `leaderboard_eval.py` | Unified, tokenizer-fair eval of every model (bits/byte, closed-book & grounded accuracy, faithful-refusal); incremental + fault-tolerant → `leaderboard.json` |
+| `judge_eval.py` | Reference-grounded LLM-judge (DeepSeek-V3): rubric /10 per task + quote-validity + over-refusal + judge self-agreement → `judge_leaderboard.json` |
 | `train_slm.py` | Generalized full-FT SFT/RAFT for any SLM base (re-tokenizes raw text) — used for the mentor's 500M |
 | `preference_data.py` | AI-labeled preference pairs (chosen/rejected) via MiniMax-M3, for DPO + RLAIF |
 | `train_dpo.py` | DPO on any base (SLM full-FT / Gemma QLoRA) |
@@ -773,6 +774,48 @@ sortable) — omitted here for length; see the alignment note above for how to r
 
 Re-run and update with `modal run leaderboard_eval.py::run`, then paste the JSON's `models`
 array into `web/app/lib/model.ts` (`LEADERBOARD`).
+
+### The quality view: a reference-grounded LLM judge (`judge_eval.py`)
+
+Exact-match is blind to *quality* — which is exactly what SFT, DPO and RLAIF tune. So the site's
+Leaderboard has a second view, scored the way real leaderboards are: an **LLM judge**.
+
+- **Independent judge.** DeepSeek-V3 via OpenRouter — it made *none* of our data (Gemini made the
+  SFT set, MiniMax the RAFT + preference sets), so it can't quietly favor any branch.
+- **Reference-grounded & blind.** For each held-out item the judge is handed the **question, the
+  gold answer, and (for grounded items) the evidence quote**, then grades one response at a time on a
+  **rubric that sums to 10** (correctness 0–5, completeness 0–2, groundedness 0–2, clarity 0–1). It
+  compares, it never has to recall — which is what makes base models gradable and the score auditable.
+- **Three tasks** (QA / grounded / refusal) plus two programmatic checks: **quote-validity** (does the
+  `##quote##` actually appear in the context?) and **over-refusal** (does it decline questions it
+  *should* answer?).
+
+| Rank | Model | Mean /10 | QA | Grounded | Refusal | Quote-valid | Over-refusal |
+|---|---|---|---|---|---|---|---|
+| 1 | Gemma RAFT | **8.13** | 5.8 | 8.7 | 10.0 | **94%** | 25% |
+| 2 | Gemma RAFT + RLAIF | 8.04 | 6.5 | 8.0 | 10.0 | 67% | **92%** ⚠ |
+| 3 | Gemma RAFT + DPO | 7.94 | 5.8 | 8.3 | 10.0 | 61% | 28% |
+| 4 | Gemma 2B (off-the-shelf) | 7.23 | 4.0 | 8.0 | 10.0 | — | 23% |
+| 5 | 500M RAFT | 6.24 | 6.7 | 6.3 | 5.6 | 84% | 25% |
+| … | (17 more) | … | | | | | |
+| 22 | Mentor base | 1.55 | 0.4 | 0.5 | 4.7 | — | 0% |
+
+What the judge view surfaces that exact-match couldn't:
+
+- **The 2B model is genuinely better** (Gemma RAFT ~8/10 vs the best SLM ~6.2), and **RAFT ≫ SFT** for
+  grounded quality across the board.
+- **Over-refusal exposes a real RLAIF failure:** Gemma RAFT+RLAIF scores a perfect 10 on refusal but
+  **wrongly declines 92% of answerable questions** — GRPO over-optimized toward the abstain-heavy reward
+  until the model refuses almost everything. A single-sided "refusal" metric would have called this a win;
+  the two-sided pair calls it what it is.
+- **Quote-validity scales with size:** 94% of Gemma RAFT's quotes are real substrings of the context, ~80%
+  for the 500M, but only **37–44% for our 125M RAFT** — the tiny model *invents* most of the quotes it
+  cites. That is the "fabricated quote" failure, finally quantified.
+- **Honest caveat on the judge itself:** re-judging 110 cells, DeepSeek agreed with itself **64% exactly,
+  79% within one point**. So trust the coarse ranking (Gemma ~8 vs base ~1.5 is rock-solid); treat
+  sub-point gaps as noise. Measuring the measuring-stick is the point. (~$0.45 of judge calls.)
+
+Regenerate with `modal run judge_eval.py::run`, then paste the JSON into `JUDGE_LEADERBOARD`.
 
 ## Cost, honestly
 
